@@ -1,0 +1,50 @@
+name: banking-domain
+
+# Chạy end-to-end local: mssql (backing store cho emulator) → Azure Service Bus emulator →
+# payments-api (publish) + accounts-api (consume). Không cần Azure subscription thật.
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Str0ng!Passw0rd"
+    ports:
+      - "1433:1433"
+
+  servicebus-emulator:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    depends_on:
+      - mssql
+    environment:
+      ACCEPT_EULA: "Y"
+      SQL_SERVER: mssql
+      MSSQL_SA_PASSWORD: "Str0ng!Passw0rd"
+    ports:
+      - "5672:5672"
+    volumes:
+      - ./deploy/servicebus-emulator-config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:ro
+
+  payments-api:
+    build:
+      context: .
+      dockerfile: src/Payments/Payments.Api/Dockerfile
+    depends_on:
+      - servicebus-emulator
+    environment:
+      ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
+      ServiceBus__TopicName: "banking-events"
+    ports:
+      - "8081:8080"
+
+  accounts-api:
+    build:
+      context: .
+      dockerfile: src/Accounts/Accounts.Api/Dockerfile
+    depends_on:
+      - servicebus-emulator
+    environment:
+      ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
+      ServiceBus__TopicName: "banking-events"
+      ServiceBus__SubscriptionName: "accounts-subscription"
+    ports:
+      - "8082:8080"

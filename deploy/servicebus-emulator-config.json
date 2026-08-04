@@ -1,0 +1,29 @@
+{
+  "UserConfig": {
+    "Namespaces": [
+      {
+        "Name": "sbemulatorns",
+        "Queues": [],
+        "Topics": [
+          {
+            "Name": "banking-events",
+            "Properties": {},
+            "Subscriptions": [
+              {
+                "Name": "accounts-subscription",
+                "Properties": {
+                  "DeadLetteringOnMessageExpiration": true,
+                  "MaxDeliveryCount": 5
+                },
+                "Rules": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "Logging": {
+      "Type": "File"
+    }
+  }
+}
