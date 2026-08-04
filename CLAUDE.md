@@ -31,7 +31,7 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | Event-driven architecture | ✅ | integration events qua broker + Outbox |
 | RESTful API (gRPC plus) | ✅ / ⬜ gRPC P2 | Minimal API |
 | Clean Architecture + DDD | ✅ P2 | Domain/Application/Infra/Api, aggregate |
-| OAuth2 / OIDC / JWT | ⬜ P2 | JWT bearer |
+| OAuth2 / OIDC / JWT | ✅ P2 | JWT bearer + /token dev, endpoints RequireAuthorization |
 | Docker | ✅ | Dockerfile + compose |
 | CI/CD, Kubernetes, App Insights | ⬜ P3 | GitHub Actions + k8s manifests |
 

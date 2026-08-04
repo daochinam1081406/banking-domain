@@ -1,3 +1,7 @@
+using System.Text;
+using BuildingBlocks.Auth;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using Payments.Application;
 using Payments.Domain.Exceptions;
@@ -6,19 +10,40 @@ using Payments.Infrastructure;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddPaymentsInfrastructure(builder.Configuration);
 
+// ── JWT auth (OAuth2/OIDC bearer) ────────────────────────────────
+var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
+builder.Services.AddSingleton(jwt);
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o => o.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwt.Issuer,
+        ValidAudience = jwt.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret)),
+    });
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
-// Tạo schema transfers + outbox khi khởi động.
 using (var scope = app.Services.CreateScope())
 {
     var dataSource = scope.ServiceProvider.GetRequiredService<NpgsqlDataSource>();
     await SchemaInitializer.EnsureCreatedAsync(dataSource);
 }
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapGet("/", () => "Payments.Api — POST /api/transfers");
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "payments" }));
 
-// POST /api/transfers → Transfer + outbox trong 1 transaction; OutboxPublisher đẩy lên Service Bus.
+// Dev token (production: thay bằng OAuth2/OIDC identity provider)
+app.MapPost("/token", (TokenRequest req, JwtOptions opt) =>
+    Results.Ok(new { token = JwtTokenFactory.Issue(opt, req.Subject ?? "demo-user", req.Role ?? "customer") }));
+
 app.MapPost("/api/transfers", async (
     InitiateTransferCommand cmd, InitiateTransferHandler handler, CancellationToken ct) =>
 {
@@ -31,12 +56,14 @@ app.MapPost("/api/transfers", async (
     {
         return Results.BadRequest(new { error = ex.ErrorCode, message = ex.Message });
     }
-});
+}).RequireAuthorization();
 
 app.MapGet("/api/transfers/{id:guid}", async (Guid id, ITransferReadService reads, CancellationToken ct) =>
 {
     var dto = await reads.GetByIdAsync(id, ct);
     return dto is null ? Results.NotFound() : Results.Ok(dto);
-});
+}).RequireAuthorization();
 
 app.Run();
+
+public sealed record TokenRequest(string? Subject, string? Role);
