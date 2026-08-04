@@ -19,8 +19,8 @@ public static class DependencyInjection
         services.AddScoped<ITransferReadService, DapperTransferReadService>();
         services.AddScoped<InitiateTransferHandler>();
 
-        services.AddAzureServiceBus(config);            // IEventBus (Azure Service Bus)
-        services.AddHostedService<OutboxPublisher>();   // outbox → Service Bus
+        services.AddEventBus(config);                   // IEventBus: ServiceBus | EventGrid | Kafka
+        services.AddHostedService<OutboxPublisher>();   // outbox → broker đã chọn
         return services;
     }
 }

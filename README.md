@@ -39,8 +39,25 @@ curl http://localhost:8082/api/accounts/ACC-002
 ```
 
 ## Tech stack
-.NET 9 · ASP.NET Core Minimal API · **Azure Service Bus** (`Azure.Messaging.ServiceBus`) ·
-Docker Compose · Azure Service Bus **emulator** (chạy offline).
+.NET 9 · ASP.NET Core Minimal API · **SQL Server + EF Core** (Accounts) · **PostgreSQL + Dapper**
+(Payments) · **Outbox pattern** · Messaging cắm được **Azure Service Bus / Azure Event Grid / Kafka**
+qua 1 `IEventBus` · Docker Compose · Azure Service Bus **emulator** (chạy offline).
+
+## 1 abstraction — 3 broker (đúng scope JD)
+
+JD yêu cầu cả **Azure Service Bus + Azure Event Grid + Kafka**. Cả ba đều là implementation của
+`IEventBus`; đổi broker chỉ bằng config, không đụng domain/application:
+
+```jsonc
+// appsettings / env — chọn provider
+"Messaging": { "Provider": "ServiceBus" }   // hoặc "EventGrid" | "Kafka"
+```
+
+| Provider | Impl | Config section |
+|----------|------|---------------|
+| `ServiceBus` (mặc định) | `AzureServiceBusEventBus` | `ServiceBus` |
+| `EventGrid` | `EventGridEventBus` | `EventGrid` (TopicEndpoint + AccessKey) |
+| `Kafka` | `KafkaEventBus` | `Kafka` (BootstrapServers + Topic) |
 
 ## So sánh Kafka ↔ Azure Service Bus ↔ Event Grid
 

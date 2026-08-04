@@ -25,8 +25,8 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | **Outbox pattern** | ✅ P2 | Payments: transfer + outbox 1 tx → publisher |
 | Redis | ⬜ P2 | cache số dư / read model |
 | **Azure Service Bus** | ✅ P1 | `AzureServiceBusEventBus` |
-| **Azure Event Grid** | ⬜ P2 | impl `IEventBus` thứ 2 |
-| **Kafka** | ⬜ P2 | impl `IEventBus` thứ 3 |
+| **Azure Event Grid** | ✅ P2 | `EventGridEventBus` (chọn qua `Messaging:Provider`) |
+| **Kafka** | ✅ P2 | `KafkaEventBus` (chọn qua `Messaging:Provider`) |
 | Microservices architecture | ✅ | 2 service tách, **DB-per-service** (SQL Server + Postgres) |
 | Event-driven architecture | ✅ | integration events qua broker + Outbox |
 | RESTful API (gRPC plus) | ✅ / ⬜ gRPC P2 | Minimal API |
