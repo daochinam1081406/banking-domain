@@ -4,6 +4,7 @@ using Accounts.Application;
 using Accounts.Domain;
 using Accounts.Infrastructure;
 using BuildingBlocks.Auth;
+using BuildingBlocks.Http;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -36,6 +37,7 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNEC
 
 var app = builder.Build();
 app.UseCors();
+app.UseDomainExceptionHandler();   // domain error → 400 ProblemDetails, không lộ stack trace
 
 using (var scope = app.Services.CreateScope())
 {
@@ -54,7 +56,7 @@ app.UseAuthorization();
 
 app.MapGrpcService<AccountCheckService>();
 app.MapGet("/", () => "Accounts.Api — GET /api/accounts/{number} · gRPC AccountCheck");
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "accounts" }));
+app.MapHealthChecks("/health");   // probe SQL Server (+ Redis) thật
 
 app.MapPost("/token", (TokenRequest req, JwtOptions opt) =>
     Results.Ok(new { token = JwtTokenFactory.Issue(opt, req.Subject ?? "demo-user", req.Role ?? "customer") }));

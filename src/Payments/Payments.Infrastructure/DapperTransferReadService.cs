@@ -12,13 +12,16 @@ public sealed class DapperTransferReadService(NpgsqlDataSource dataSource) : ITr
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         return await conn.QuerySingleOrDefaultAsync<TransferDto>(new CommandDefinition(
             """
-            SELECT id            AS Id,
-                   from_account  AS FromAccount,
-                   to_account    AS ToAccount,
-                   amount        AS Amount,
-                   currency      AS Currency,
-                   status        AS Status,
-                   created_at    AS CreatedAt
+            SELECT id             AS Id,
+                   from_account   AS FromAccount,
+                   to_account     AS ToAccount,
+                   amount         AS Amount,
+                   currency       AS Currency,
+                   status         AS Status,
+                   created_at     AS CreatedAt,
+                   completed_at   AS CompletedAt,
+                   failure_code   AS FailureCode,
+                   failure_reason AS FailureReason
             FROM transfers
             WHERE id = @Id
             """,

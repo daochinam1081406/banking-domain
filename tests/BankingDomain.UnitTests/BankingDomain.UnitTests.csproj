@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Accounts\Accounts.Domain\Accounts.Domain.csproj" />
     <ProjectReference Include="..\..\src\Payments\Payments.Domain\Payments.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Accounts\Accounts.Application\Accounts.Application.csproj" />
   </ItemGroup>
 
 </Project>

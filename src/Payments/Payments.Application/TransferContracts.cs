@@ -5,7 +5,8 @@ namespace Payments.Application;
 
 public sealed record TransferDto(
     Guid Id, string FromAccount, string ToAccount, decimal Amount, string Currency,
-    string Status, DateTimeOffset CreatedAt);
+    string Status, DateTimeOffset CreatedAt,
+    DateTimeOffset? CompletedAt, string? FailureCode, string? FailureReason);
 
 public sealed record InitiateTransferCommand(string FromAccount, string ToAccount, decimal Amount, string? Currency);
 
@@ -21,4 +22,14 @@ public interface ITransferRepository
 public interface ITransferReadService
 {
     Task<TransferDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
+}
+
+/// <summary>
+/// Cập nhật trạng thái transfer khi nhận event kết quả từ Accounts (saga).
+/// Idempotent: chỉ update khi đang ở trạng thái Initiated.
+/// </summary>
+public interface ITransferStatusWriter
+{
+    Task MarkCompletedAsync(Guid transferId, CancellationToken ct = default);
+    Task MarkFailedAsync(Guid transferId, string errorCode, string reason, CancellationToken ct = default);
 }

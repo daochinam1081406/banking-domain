@@ -3,6 +3,7 @@ using Accounts.Application;
 using Azure.Messaging.ServiceBus;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Messaging;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,15 +12,22 @@ using Microsoft.Extensions.Options;
 namespace Accounts.Infrastructure;
 
 /// <summary>
-/// Consume MoneyTransferred từ Azure Service Bus subscription → áp lên số dư (SQL Server).
-/// Scope-per-message để resolve MoneyTransferApplier (phụ thuộc DbContext scoped).
-/// Complete khi thành công; lỗi domain → Abandon (retry) → quá MaxDeliveryCount → dead-letter.
+/// Consume MoneyTransferred → áp số dư (SQL Server) một cách **idempotent** (inbox theo MessageId).
+/// Sau khi áp, phát event kết quả về Payments (saga): TransferCompleted | TransferFailed.
+///
+/// Phân loại lỗi:
+///  - Lỗi nghiệp vụ (permanent, vd INSUFFICIENT_FUNDS) → phát TransferFailed + Complete message
+///    (retry không bao giờ thành công, giữ lại chỉ tốn DLQ).
+///  - Xung đột concurrency (transient) → retry trong tiến trình, hết lượt thì Abandon để broker giao lại.
+///  - Lỗi hạ tầng → Abandon → retry → quá MaxDeliveryCount → dead-letter.
 /// </summary>
 public sealed class MoneyTransferConsumer(
     IServiceScopeFactory scopeFactory,
     IOptions<ServiceBusOptions> options,
     ILogger<MoneyTransferConsumer> logger) : BackgroundService
 {
+    private const int ConcurrencyRetries = 3;
+
     private ServiceBusClient? _client;
     private ServiceBusProcessor? _processor;
 
@@ -43,28 +51,104 @@ public sealed class MoneyTransferConsumer(
 
     private async Task OnMessageAsync(ProcessMessageEventArgs args)
     {
+        if (args.Message.Subject != nameof(MoneyTransferredIntegrationEvent))
+        {
+            await args.CompleteMessageAsync(args.Message);   // event không quan tâm
+            return;
+        }
+
+        MoneyTransferredIntegrationEvent? e;
         try
         {
-            if (args.Message.Subject == nameof(MoneyTransferredIntegrationEvent))
+            e = JsonSerializer.Deserialize<MoneyTransferredIntegrationEvent>(args.Message.Body.ToString());
+        }
+        catch (JsonException ex)
+        {
+            // Payload hỏng — retry vô nghĩa, đẩy thẳng dead-letter để điều tra.
+            logger.LogError(ex, "Payload không hợp lệ, dead-letter {MessageId}", args.Message.MessageId);
+            await args.DeadLetterMessageAsync(args.Message, "InvalidPayload", ex.Message);
+            return;
+        }
+
+        if (e is null)
+        {
+            await args.DeadLetterMessageAsync(args.Message, "EmptyPayload", "Deserialize trả null");
+            return;
+        }
+
+        try
+        {
+            var outcome = await ApplyWithConcurrencyRetryAsync(args.Message.MessageId, e, args.CancellationToken);
+
+            if (outcome.Duplicate)
             {
-                var e = JsonSerializer.Deserialize<MoneyTransferredIntegrationEvent>(args.Message.Body.ToString());
-                if (e is not null)
-                {
-                    await using var scope = scopeFactory.CreateAsyncScope();
-                    var applier = scope.ServiceProvider.GetRequiredService<MoneyTransferApplier>();
-                    await applier.ApplyAsync(e.FromAccount, e.ToAccount, e.Amount, e.Currency, args.CancellationToken);
-                    logger.LogInformation(
-                        "Applied transfer {TransferId}: {From} → {To} {Amount} {Currency}",
-                        e.TransferId, e.FromAccount, e.ToAccount, e.Amount, e.Currency);
-                }
+                logger.LogInformation("Bỏ qua message trùng {MessageId} (transfer {TransferId})",
+                    args.Message.MessageId, e.TransferId);
             }
+            else if (outcome.Applied)
+            {
+                await PublishResultAsync(new TransferCompletedIntegrationEvent { TransferId = e.TransferId },
+                    args.CancellationToken);
+                logger.LogInformation("Applied transfer {TransferId}: {From} → {To} {Amount} {Currency}",
+                    e.TransferId, e.FromAccount, e.ToAccount, e.Amount, e.Currency);
+            }
+            else
+            {
+                // Lỗi nghiệp vụ permanent → compensating event, không retry.
+                await PublishResultAsync(new TransferFailedIntegrationEvent
+                {
+                    TransferId = e.TransferId,
+                    ErrorCode = outcome.ErrorCode!,
+                    Reason = outcome.Reason!,
+                }, args.CancellationToken);
+                logger.LogWarning("Transfer {TransferId} thất bại ({Code}): {Reason}",
+                    e.TransferId, outcome.ErrorCode, outcome.Reason);
+            }
+
             await args.CompleteMessageAsync(args.Message);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Xử lý message {MessageId} thất bại — abandon để retry", args.Message.MessageId);
+            logger.LogError(ex, "Xử lý message {MessageId} lỗi hạ tầng — abandon để retry", args.Message.MessageId);
             await args.AbandonMessageAsync(args.Message);
         }
+    }
+
+    private async Task<ApplyTransferOutcome> ApplyWithConcurrencyRetryAsync(
+        string messageId, MoneyTransferredIntegrationEvent e, CancellationToken ct)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var applier = scope.ServiceProvider.GetRequiredService<MoneyTransferApplier>();
+            try
+            {
+                return await applier.ApplyAsync(messageId, e.FromAccount, e.ToAccount, e.Amount, ct);
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < ConcurrencyRetries)
+            {
+                // Account bị sửa song song — đọc lại state mới và thử lại (optimistic concurrency).
+                logger.LogWarning("Concurrency conflict transfer {TransferId}, thử lại lần {Attempt}",
+                    e.TransferId, attempt + 1);
+                await Task.Delay(TimeSpan.FromMilliseconds(50 * attempt), ct);
+            }
+            catch (DbUpdateException ex) when (IsDuplicateInbox(ex))
+            {
+                // Message trùng xử lý song song — cái kia đã ghi inbox trước.
+                return ApplyTransferOutcome.AlreadyApplied();
+            }
+        }
+    }
+
+    private static bool IsDuplicateInbox(DbUpdateException ex)
+        => ex.InnerException?.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) == true
+        || ex.InnerException?.Message.Contains("PRIMARY KEY", StringComparison.OrdinalIgnoreCase) == true;
+
+    private async Task PublishResultAsync(IntegrationEvent @event, CancellationToken ct)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var bus = scope.ServiceProvider.GetRequiredService<IEventBus>();
+        await bus.PublishAsync(@event, ct);
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)

@@ -23,8 +23,9 @@ POST /api/transfers                         GET /api/accounts/{id}
 ```
 
 - **BuildingBlocks** — `IEventBus` abstraction + `AzureServiceBusEventBus` impl + integration event contracts. Đổi broker (Kafka/Event Grid) chỉ thay implementation.
-- **Payments.Api** — nhận lệnh chuyển tiền → publish `MoneyTransferredIntegrationEvent` (MessageId = idempotency).
-- **Accounts.Api** — consume qua subscription, cập nhật số dư; `MaxDeliveryCount=5` → dead-letter.
+- **Payments.Api** — nhận lệnh chuyển tiền → gRPC validate → ghi Transfer + **Outbox** (1 transaction) → publish.
+- **Accounts.Api** — consume, áp số dư **idempotent** (bảng inbox `processed_messages` + optimistic concurrency `RowVersion`), rồi phát `TransferCompleted`/`TransferFailed`.
+- **Saga khép kín** — Payments consume event kết quả → transfer chuyển `Initiated → Completed | Failed` (không kẹt trạng thái).
 
 ## Chạy local (không cần Azure thật) — ✅ đã verify end-to-end
 

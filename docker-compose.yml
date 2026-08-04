@@ -52,6 +52,7 @@ services:
       Grpc__AccountsUrl: "http://accounts-api:8090"
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ServiceBus__TopicName: "banking-events"
+      ServiceBus__SubscriptionName: "payments-subscription"
     ports:
       - "8081:8080"
 

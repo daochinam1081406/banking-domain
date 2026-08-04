@@ -14,6 +14,9 @@ public sealed class Account
     public string Currency { get; private set; } = "VND";
     public DateTimeOffset UpdatedAt { get; private set; }
 
+    /// <summary>Optimistic concurrency — chặn lost update khi nhiều message cùng account xử lý song song.</summary>
+    public byte[] RowVersion { get; private set; } = [];
+
     private Account() { } // EF Core
 
     public static Account Open(string number, decimal initialBalance = 0, string currency = "VND")

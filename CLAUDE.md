@@ -134,7 +134,16 @@ public interface IEventBus
 - Strongly-typed ID (record), Value Objects validate trong constructor.
 - Domain exception kế thừa `Exception` + `string ErrorCode`.
 
-### 6.5 Outbox — Phase 2
+### 6.5 Reliability (BẮT BUỘC khi thêm consumer mới)
+- **Inbox/dedup**: mọi consumer phải check `IInboxStore.AlreadyProcessedAsync(messageId)` trước khi
+  áp side-effect; `MarkProcessed` commit **cùng transaction** với thay đổi dữ liệu. Broker chỉ
+  at-least-once → không có inbox = trừ tiền 2 lần.
+- **Optimistic concurrency**: entity bị sửa song song phải có `RowVersion`; retry khi `DbUpdateConcurrencyException`.
+- **Phân loại lỗi**: lỗi nghiệp vụ (permanent) → phát compensating event + Complete message; lỗi hạ tầng
+  (transient) → Abandon để retry; payload hỏng → DeadLetter thẳng.
+- **Saga**: mọi lệnh phải có trạng thái cuối (Completed/Failed), không để kẹt ở trạng thái khởi tạo.
+
+### 6.6 Outbox — Phase 2
 - Persist aggregate + outbox row trong **1 transaction**; publisher (BackgroundService) poll outbox → `IEventBus`.
 
 ---

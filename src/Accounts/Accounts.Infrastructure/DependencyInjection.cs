@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddDbContext<AccountsDbContext>(o => o.UseSqlServer(connStr));
 
         services.AddScoped<IAccountRepository, EfAccountRepository>();
+        services.AddScoped<IInboxStore, EfInboxStore>();
         services.AddScoped<MoneyTransferApplier>();
 
         // Redis cache-aside cho read số dư — bật khi có ConnectionStrings:Redis, ngược lại no-op.
@@ -37,8 +38,14 @@ public static class DependencyInjection
             services.AddSingleton<IAccountCacheInvalidator, NoOpAccountCacheInvalidator>();
         }
 
-        services.Configure<ServiceBusOptions>(config.GetSection("ServiceBus"));
+        services.AddEventBus(config);                    // publish saga result events về Payments
         services.AddHostedService<MoneyTransferConsumer>();
+
+        // Health check thật — probe DB (và Redis nếu bật), không phải trả "healthy" cứng.
+        var health = services.AddHealthChecks().AddDbContextCheck<AccountsDbContext>("sqlserver");
+        if (!string.IsNullOrWhiteSpace(redisConn))
+            health.AddCheck("redis", new RedisHealthCheck(redisConn));
+
         return services;
     }
 }

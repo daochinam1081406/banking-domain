@@ -16,6 +16,14 @@
                   "MaxDeliveryCount": 5
                 },
                 "Rules": []
+              },
+              {
+                "Name": "payments-subscription",
+                "Properties": {
+                  "DeadLetteringOnMessageExpiration": true,
+                  "MaxDeliveryCount": 5
+                },
+                "Rules": []
               }
             ]
           }

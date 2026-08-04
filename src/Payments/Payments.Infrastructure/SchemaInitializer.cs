@@ -17,6 +17,11 @@ public static class SchemaInitializer
             created_at   TIMESTAMPTZ  NOT NULL
         );
 
+        -- Kết quả saga từ Accounts (Completed/Failed)
+        ALTER TABLE transfers ADD COLUMN IF NOT EXISTS completed_at    TIMESTAMPTZ;
+        ALTER TABLE transfers ADD COLUMN IF NOT EXISTS failure_code    VARCHAR(50);
+        ALTER TABLE transfers ADD COLUMN IF NOT EXISTS failure_reason  TEXT;
+
         CREATE TABLE IF NOT EXISTS outbox (
             id           UUID PRIMARY KEY,
             event_type   VARCHAR(100) NOT NULL,

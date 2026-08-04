@@ -1,5 +1,6 @@
 using System.Text;
 using BuildingBlocks.Auth;
+using BuildingBlocks.Http;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
@@ -34,6 +35,7 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNEC
 
 var app = builder.Build();
 app.UseCors();
+app.UseDomainExceptionHandler();   // domain error → 400 ProblemDetails
 
 using (var scope = app.Services.CreateScope())
 {
@@ -45,7 +47,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/", () => "Payments.Api — POST /api/transfers");
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "payments" }));
+app.MapHealthChecks("/health");   // probe Postgres thật
 
 // Dev token (production: thay bằng OAuth2/OIDC identity provider)
 app.MapPost("/token", (TokenRequest req, JwtOptions opt) =>
