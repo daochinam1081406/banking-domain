@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Azure;
 using Azure.Messaging.EventGrid;
+using BuildingBlocks.Observability;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -43,6 +44,7 @@ public sealed class EventGridEventBus : IEventBus
             Id = messageId,
         };
         await _client.SendEventAsync(egEvent, ct);
-        _logger.LogInformation("Published {EventType} {MessageId} → Event Grid", eventType, messageId);
+        _logger.LogInformation("Published {EventType} {MessageId} → Event Grid (corr {CorrelationId})",
+            eventType, messageId, CorrelationContext.GetOrCreate());
     }
 }

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using BuildingBlocks.Observability;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -42,7 +43,11 @@ public sealed class KafkaEventBus : IEventBus, IDisposable
         {
             Key = messageId,
             Value = jsonPayload,
-            Headers = new Headers { { "eventType", Encoding.UTF8.GetBytes(eventType) } },
+            Headers = new Headers
+            {
+                { "eventType", Encoding.UTF8.GetBytes(eventType) },
+                { CorrelationContext.MessagePropertyName, Encoding.UTF8.GetBytes(CorrelationContext.GetOrCreate()) },
+            },
         };
         var result = await _producer.ProduceAsync(_topic, message, ct);
         _logger.LogInformation("Published {EventType} {MessageId} → Kafka {Offset}", eventType, messageId, result.TopicPartitionOffset);

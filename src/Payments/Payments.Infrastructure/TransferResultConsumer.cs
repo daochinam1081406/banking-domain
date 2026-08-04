@@ -2,6 +2,7 @@ using System.Text.Json;
 using Azure.Messaging.ServiceBus;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Messaging;
+using BuildingBlocks.Observability;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -46,6 +47,12 @@ public sealed class TransferResultConsumer(
 
     private async Task OnMessageAsync(ProcessMessageEventArgs args)
     {
+        CorrelationContext.Set(args.Message.CorrelationId ?? Guid.NewGuid().ToString("N"));
+        using var logScope = logger.BeginScope(new Dictionary<string, object>
+        {
+            [CorrelationContext.LogPropertyName] = CorrelationContext.Id ?? "-",
+        });
+
         try
         {
             await using var scope = scopeFactory.CreateAsyncScope();

@@ -1,4 +1,5 @@
 using BuildingBlocks.Messaging;
+using BuildingBlocks.Observability;
 using Dapper;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -16,7 +17,7 @@ public sealed class OutboxPublisher(
     IEventBus eventBus,
     ILogger<OutboxPublisher> logger) : BackgroundService
 {
-    private sealed record OutboxRow(Guid Id, string EventType, string Payload);
+    private sealed record OutboxRow(Guid Id, string EventType, string Payload, string? CorrelationId);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -35,7 +36,7 @@ public sealed class OutboxPublisher(
 
         var rows = (await conn.QueryAsync<OutboxRow>(new CommandDefinition(
             """
-            SELECT id AS Id, event_type AS EventType, payload AS Payload
+            SELECT id AS Id, event_type AS EventType, payload AS Payload, correlation_id AS CorrelationId
             FROM outbox
             WHERE status = 'PENDING'
             ORDER BY created_at
@@ -45,6 +46,12 @@ public sealed class OutboxPublisher(
 
         foreach (var row in rows)
         {
+            // Khôi phục correlation của request gốc → message mang đúng id, log nối được đầu-cuối.
+            CorrelationContext.Set(row.CorrelationId ?? Guid.NewGuid().ToString("N"));
+            using var logScope = logger.BeginScope(new Dictionary<string, object>
+            {
+                [CorrelationContext.LogPropertyName] = CorrelationContext.Id ?? "-",
+            });
             await eventBus.PublishRawAsync(row.EventType, row.Payload, row.Id.ToString(), ct);
             await conn.ExecuteAsync(new CommandDefinition(
                 "UPDATE outbox SET status = 'PUBLISHED', published_at = NOW() WHERE id = @Id",

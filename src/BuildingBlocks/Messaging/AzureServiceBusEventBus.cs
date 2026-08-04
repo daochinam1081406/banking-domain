@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Azure.Messaging.ServiceBus;
+using BuildingBlocks.Observability;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -32,14 +33,19 @@ public sealed class AzureServiceBusEventBus : IEventBus, IAsyncDisposable
     public async Task PublishRawAsync(
         string eventType, string jsonPayload, string messageId, CancellationToken ct = default)
     {
+        var correlationId = CorrelationContext.GetOrCreate();
         var message = new ServiceBusMessage(jsonPayload)
         {
-            Subject     = eventType,   // subscription filter routing
-            MessageId   = messageId,   // dedup / idempotency
-            ContentType = "application/json",
+            Subject       = eventType,      // subscription filter routing
+            MessageId     = messageId,      // dedup / idempotency
+            CorrelationId = correlationId,  // trace xuyên service
+            ContentType   = "application/json",
         };
+        message.ApplicationProperties[CorrelationContext.MessagePropertyName] = correlationId;
+
         await _sender.SendMessageAsync(message, ct);
-        _logger.LogInformation("Published {EventType} {MessageId} → Service Bus topic", eventType, messageId);
+        _logger.LogInformation("Published {EventType} {MessageId} → Service Bus (corr {CorrelationId})",
+            eventType, messageId, correlationId);
     }
 
     public async ValueTask DisposeAsync()

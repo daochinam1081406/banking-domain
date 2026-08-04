@@ -1,5 +1,6 @@
 using System.Text.Json;
 using BuildingBlocks.Messaging;
+using BuildingBlocks.Observability;
 using Dapper;
 using Npgsql;
 using Payments.Application;
@@ -29,14 +30,15 @@ public sealed class DapperTransferRepository(NpgsqlDataSource dataSource) : ITra
 
         await conn.ExecuteAsync(new CommandDefinition(
             """
-            INSERT INTO outbox (id, event_type, payload, status, created_at)
-            VALUES (@Id, @EventType, @Payload::jsonb, 'PENDING', NOW())
+            INSERT INTO outbox (id, event_type, payload, status, created_at, correlation_id)
+            VALUES (@Id, @EventType, @Payload::jsonb, 'PENDING', NOW(), @CorrelationId)
             """,
             new
             {
                 Id = integrationEvent.EventId,
                 integrationEvent.EventType,
                 Payload = JsonSerializer.Serialize(integrationEvent, integrationEvent.GetType()),
+                CorrelationId = CorrelationContext.GetOrCreate(),   // giữ lại để publisher (thread nền) khôi phục
             }, tx, cancellationToken: ct));
 
         await tx.CommitAsync(ct);

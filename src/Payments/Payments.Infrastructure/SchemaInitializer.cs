@@ -31,6 +31,8 @@ public static class SchemaInitializer
             published_at TIMESTAMPTZ
         );
 
+        ALTER TABLE outbox ADD COLUMN IF NOT EXISTS correlation_id VARCHAR(64);
+
         CREATE INDEX IF NOT EXISTS idx_outbox_pending
             ON outbox (created_at) WHERE status = 'PENDING';
         """;

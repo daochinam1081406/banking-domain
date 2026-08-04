@@ -3,6 +3,7 @@ using Accounts.Application;
 using Azure.Messaging.ServiceBus;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Messaging;
+using BuildingBlocks.Observability;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -51,6 +52,13 @@ public sealed class MoneyTransferConsumer(
 
     private async Task OnMessageAsync(ProcessMessageEventArgs args)
     {
+        // Nối trace với service gửi: log của Accounts dùng chung CorrelationId với Payments.
+        RestoreCorrelation(args.Message);
+        using var logScope = logger.BeginScope(new Dictionary<string, object>
+        {
+            [CorrelationContext.LogPropertyName] = CorrelationContext.Id ?? "-",
+        });
+
         if (args.Message.Subject != nameof(MoneyTransferredIntegrationEvent))
         {
             await args.CompleteMessageAsync(args.Message);   // event không quan tâm
@@ -138,6 +146,21 @@ public sealed class MoneyTransferConsumer(
                 return ApplyTransferOutcome.AlreadyApplied();
             }
         }
+    }
+
+    private static void RestoreCorrelation(ServiceBusReceivedMessage message)
+    {
+        var correlationId = message.CorrelationId;
+
+        if (string.IsNullOrWhiteSpace(correlationId)
+            && message.ApplicationProperties.TryGetValue(CorrelationContext.MessagePropertyName, out var prop))
+        {
+            correlationId = prop?.ToString();
+        }
+
+        CorrelationContext.Set(string.IsNullOrWhiteSpace(correlationId)
+            ? Guid.NewGuid().ToString("N")
+            : correlationId);
     }
 
     private static bool IsDuplicateInbox(DbUpdateException ex)

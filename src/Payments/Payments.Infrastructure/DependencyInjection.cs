@@ -23,7 +23,8 @@ public static class DependencyInjection
 
         // gRPC client → Accounts AccountCheck (sync validate số dư)
         var accountsGrpcUrl = config["Grpc:AccountsUrl"] ?? "http://localhost:8082";
-        services.AddGrpcClient<Banking.Grpc.AccountCheck.AccountCheckClient>(o => o.Address = new Uri(accountsGrpcUrl));
+        services.AddGrpcClient<Banking.Grpc.AccountCheck.AccountCheckClient>(o => o.Address = new Uri(accountsGrpcUrl))
+            .AddStandardResilienceHandler();   // Polly: retry + circuit breaker + timeout cho transient fault
         services.AddScoped<IAccountChecker, GrpcAccountChecker>();
 
         services.AddScoped<ITransferStatusWriter, DapperTransferStatusWriter>();

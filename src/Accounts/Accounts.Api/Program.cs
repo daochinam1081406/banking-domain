@@ -5,11 +5,13 @@ using Accounts.Domain;
 using Accounts.Infrastructure;
 using BuildingBlocks.Auth;
 using BuildingBlocks.Http;
+using BuildingBlocks.Observability;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddObservability("accounts-api");   // Serilog structured logs + OpenTelemetry tracing
 builder.Services.AddAccountsInfrastructure(builder.Configuration);
 builder.Services.AddGrpc();
 
@@ -36,6 +38,7 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNEC
     builder.Services.AddApplicationInsightsTelemetry();
 
 var app = builder.Build();
+app.UseObservability();   // correlation id + request logging
 app.UseCors();
 app.UseDomainExceptionHandler();   // domain error → 400 ProblemDetails, không lộ stack trace
 

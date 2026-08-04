@@ -1,6 +1,7 @@
 using System.Text;
 using BuildingBlocks.Auth;
 using BuildingBlocks.Http;
+using BuildingBlocks.Observability;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
@@ -9,6 +10,7 @@ using Payments.Domain.Exceptions;
 using Payments.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddObservability("payments-api");   // Serilog structured logs + OpenTelemetry tracing
 builder.Services.AddPaymentsInfrastructure(builder.Configuration);
 
 // ── JWT auth (OAuth2/OIDC bearer) ────────────────────────────────
@@ -34,6 +36,7 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNEC
     builder.Services.AddApplicationInsightsTelemetry();
 
 var app = builder.Build();
+app.UseObservability();   // correlation id + request logging
 app.UseCors();
 app.UseDomainExceptionHandler();   // domain error → 400 ProblemDetails
 
