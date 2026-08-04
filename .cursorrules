@@ -1,0 +1,48 @@
+# banking-domain — Cursor AI Rules
+
+> **Nguồn chuẩn: `CLAUDE.md` ở gốc repo.** LUÔN đọc `CLAUDE.md` trước khi generate code — nó chứa
+> đầy đủ scope mapping, kiến trúc, patterns. File này là bản rút gọn rule BẮT BUỘC; mâu thuẫn thì
+> CLAUDE.md thắng. Giữ 2 file đồng bộ. Theo cùng bộ quy tắc "allinone" (repo D-Pro).
+
+## Project
+Demo .NET Core microservices bám sát **100% scope** JD .NET Core Backend/Microservices (banking/insurance).
+Domain ngân hàng (Account/Payment), map 1:1 sang bảo hiểm. Mục tiêu: đóng gap **Azure messaging +
+microservices tách thật** mà D-Pro (monolith, Kafka) không có.
+
+## Nguyên tắc số 1 — bám scope JD
+Mỗi feature PHẢI map về 1 dòng JD (xem bảng §2 trong CLAUDE.md). KHÔNG thêm ngoài scope. JD yêu cầu:
+.NET Core · **SQL Server + PostgreSQL** (cả hai) · Redis · **Azure Service Bus + Event Grid + Kafka**
+(cả ba) · microservices · event-driven · REST (+gRPC) · Clean Arch + DDD · OAuth2/OIDC/JWT · Docker/K8s/CI-CD.
+
+## Kiến trúc
+- Microservices, **database-per-service** (không share DB).
+- Async qua `IEventBus` abstraction — cắm Azure Service Bus / Event Grid / Kafka không đụng domain.
+- Sync qua gRPC khi cần. **Outbox pattern**: persist aggregate + outbox 1 transaction → publisher → broker.
+- **Accounts → SQL Server + EF Core** (data modeling). **Payments → PostgreSQL + Dapper** (query optimization).
+
+## Code conventions (giống allinone)
+1. `sealed` cho mọi class/record cụ thể.
+2. Primary constructor injection (C# 12): `class Foo(IBar bar)`.
+3. `async Task<T>` + `CancellationToken ct` cho mọi I/O.
+4. EF Core cho Accounts (SQL Server), Dapper + raw SQL cho Payments (PostgreSQL).
+5. Comment WHY, không WHAT. Validate ở boundary (API / VO ctor).
+6. Domain exception kế thừa Exception + `string ErrorCode`. Strongly-typed IDs (record).
+7. Integration event : `IntegrationEvent`; MessageId=EventId (idempotency), Subject=EventType (routing).
+8. Consumer idempotent, `AutoCompleteMessages=false`, Complete/Abandon → dead-letter theo MaxDeliveryCount.
+
+## Cấu trúc (Clean Architecture per service — Phase 2)
+`X.Domain` (không phụ thuộc) → `X.Application` → `X.Infrastructure` (EF/Dapper, Outbox, consumer) → `X.Api`.
+Contract integration event dùng chung ở `BuildingBlocks/Contracts`.
+
+## Git — CỰC KỲ QUAN TRỌNG
+```
+✅ git commit -m "feat: add Dapper repo for Payments"   (conventional: feat/fix/docs/refactor/test/chore)
+❌ KHÔNG thêm dòng Co-Authored-By vào commit
+❌ KHÔNG commit secrets / connection string thật / token (dùng env var + user-secrets; push token inline rồi revoke)
+```
+Branch chính: `main`.
+
+## Trạng thái
+Phase 1 done: Payments + Accounts + Azure Service Bus + emulator + docker-compose + README (so sánh
+Kafka↔Service Bus↔Event Grid). Phase 2: SQL Server/EF + PostgreSQL/Dapper + DDD/Clean Arch + Outbox +
+JWT + gRPC + Event Grid + Kafka + Redis. Phase 3: CI/CD + k8s + App Insights.
