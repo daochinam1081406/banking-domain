@@ -16,6 +16,8 @@ export function login(subject: string, role = 'customer') {
 }
 
 // Accounts
+export const listAccounts = () => accountsApi<Account[]>('/api/accounts')
+
 export const getAccount = (number: string) =>
   accountsApi<Account>(`/api/accounts/${encodeURIComponent(number)}`)
 

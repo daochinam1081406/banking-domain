@@ -18,6 +18,12 @@ async function request<T>(baseUrl: string, path: string, opts: RequestInit = {})
 
   const res = await fetch(baseUrl + path, { ...opts, headers })
   if (!res.ok) {
+    // Token hết hạn/không hợp lệ → xoá session và đưa về Login (thay vì lỗi khó hiểu).
+    if (res.status === 401) {
+      clearToken()
+      localStorage.removeItem('bank_user')
+      if (!location.pathname.startsWith('/login')) location.assign('/login')
+    }
     let detail: string | undefined
     try { detail = JSON.stringify(await res.json()) } catch { /* ignore */ }
     throw new ApiError(res.status, detail)

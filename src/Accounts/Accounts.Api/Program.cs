@@ -61,6 +61,9 @@ app.MapHealthChecks("/health");   // probe SQL Server (+ Redis) thật
 app.MapPost("/token", (TokenRequest req, JwtOptions opt) =>
     Results.Ok(new { token = JwtTokenFactory.Issue(opt, req.Subject ?? "demo-user", req.Role ?? "customer") }));
 
+app.MapGet("/api/accounts", async (IAccountReadService reads, CancellationToken ct) =>
+    Results.Ok(await reads.ListAsync(ct))).RequireAuthorization();
+
 app.MapGet("/api/accounts/{number}", async (string number, IAccountReadService reads, CancellationToken ct) =>
 {
     var dto = await reads.GetByNumberAsync(number, ct);

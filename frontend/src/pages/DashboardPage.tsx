@@ -1,8 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { getAccount, openAccount, type Account } from '../api/banking'
+import { listAccounts, openAccount, type Account } from '../api/banking'
 import { ApiError } from '../api/client'
-
-const SEEDED = ['ACC-001', 'ACC-002', 'ACC-003']
 
 export function DashboardPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -15,11 +13,7 @@ export function DashboardPage() {
   async function load() {
     setLoading(true); setError(null)
     try {
-      const results = await Promise.allSettled(SEEDED.map(getAccount))
-      const found = results
-        .filter((r): r is PromiseFulfilledResult<Account> => r.status === 'fulfilled' && r.value != null)
-        .map((r) => r.value)
-      setAccounts(found)
+      setAccounts(await listAccounts())
     } catch (err) {
       setError(err instanceof ApiError ? `Lỗi tải tài khoản (${err.status})` : 'Không tải được tài khoản.')
     } finally {

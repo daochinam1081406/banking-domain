@@ -27,6 +27,9 @@ public sealed class CachedAccountReadService(EfAccountReadService inner, IConnec
             await db.StringSetAsync(key, JsonSerializer.Serialize(dto), CacheKeys.Ttl);
         return dto;
     }
+
+    // Danh sách đổi khi mở tài khoản mới → đọc thẳng, không cache.
+    public Task<IReadOnlyList<AccountDto>> ListAsync(CancellationToken ct = default) => inner.ListAsync(ct);
 }
 
 public sealed class RedisAccountCacheInvalidator(IConnectionMultiplexer redis) : IAccountCacheInvalidator

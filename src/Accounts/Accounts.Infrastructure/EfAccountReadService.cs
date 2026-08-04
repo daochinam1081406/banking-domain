@@ -12,4 +12,13 @@ public sealed class EfAccountReadService(AccountsDbContext db) : IAccountReadSer
             .FirstOrDefaultAsync(x => x.Number == number.Trim().ToUpperInvariant(), ct);
         return a is null ? null : new AccountDto(a.Number, a.Balance, a.Currency, a.UpdatedAt);
     }
+
+    public async Task<IReadOnlyList<AccountDto>> ListAsync(CancellationToken ct = default)
+    {
+        var rows = await db.Accounts.AsNoTracking()
+            .OrderBy(a => a.Number)
+            .Select(a => new AccountDto(a.Number, a.Balance, a.Currency, a.UpdatedAt))
+            .ToListAsync(ct);
+        return rows;
+    }
 }

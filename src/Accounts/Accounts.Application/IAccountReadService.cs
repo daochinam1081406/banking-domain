@@ -4,4 +4,5 @@ namespace Accounts.Application;
 public interface IAccountReadService
 {
     Task<AccountDto?> GetByNumberAsync(string number, CancellationToken ct = default);
+    Task<IReadOnlyList<AccountDto>> ListAsync(CancellationToken ct = default);
 }
