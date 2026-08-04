@@ -8,9 +8,9 @@ public static class AccountSeeder
     public static void Seed(AccountsDbContext db)
     {
         if (db.Accounts.Any()) return;
-        db.Accounts.Add(Account.Open("ACC-001", 10_000_000m));
-        db.Accounts.Add(Account.Open("ACC-002", 5_000_000m));
-        db.Accounts.Add(Account.Open("ACC-003", 0m));
+        db.Accounts.Add(Account.Open("ACC-001", "demo", 10_000_000m));
+        db.Accounts.Add(Account.Open("ACC-002", "demo", 5_000_000m));
+        db.Accounts.Add(Account.Open("ACC-003", "demo", 0m));
         db.SaveChanges();
     }
 }

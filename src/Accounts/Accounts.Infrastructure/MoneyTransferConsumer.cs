@@ -131,7 +131,8 @@ public sealed class MoneyTransferConsumer(
             var applier = scope.ServiceProvider.GetRequiredService<MoneyTransferApplier>();
             try
             {
-                return await applier.ApplyAsync(messageId, e.FromAccount, e.ToAccount, e.Amount, ct);
+                return await applier.ApplyAsync(
+                    messageId, e.TransferId, e.FromAccount, e.ToAccount, e.Amount, e.Currency, ct);
             }
             catch (DbUpdateConcurrencyException) when (attempt < ConcurrencyRetries)
             {

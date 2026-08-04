@@ -9,6 +9,6 @@ public sealed class GrpcAccountChecker(AccountCheck.AccountCheckClient client) :
     public async Task<AccountCheckResult> CheckAsync(string number, CancellationToken ct = default)
     {
         var reply = await client.CheckAsync(new AccountCheckRequest { Number = number }, cancellationToken: ct);
-        return new AccountCheckResult(reply.Exists, (decimal)reply.Balance, reply.Currency);
+        return new AccountCheckResult(reply.Exists, (decimal)reply.Balance, reply.Currency, reply.OwnerId);
     }
 }

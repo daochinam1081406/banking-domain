@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using BuildingBlocks.Auth;
 using BuildingBlocks.Http;
@@ -70,11 +71,14 @@ app.MapPost("/token", (TokenRequest req, JwtOptions opt) =>
     Results.Ok(new { token = JwtTokenFactory.Issue(opt, req.Subject ?? "demo-user", req.Role ?? "customer") }));
 
 app.MapPost("/api/transfers", async (
-    InitiateTransferCommand cmd, InitiateTransferHandler handler, CancellationToken ct) =>
+    InitiateTransferCommand cmd, ClaimsPrincipal user,
+    InitiateTransferHandler handler, CancellationToken ct) =>
 {
     try
     {
-        var result = await handler.HandleAsync(cmd, ct);
+        // Người gọi lấy từ JWT, không tin client tự khai.
+        var subject = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value ?? "";
+        var result = await handler.HandleAsync(cmd with { RequestedBy = subject }, ct);
         return Results.Accepted($"/api/transfers/{result.TransferId}", result);
     }
     catch (PaymentsDomainException ex)

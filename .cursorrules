@@ -47,6 +47,13 @@ Mỗi feature PHẢI map về 1 dòng JD (xem bảng §2 trong CLAUDE.md). KHÔN
 - **Resilience:** HTTP/gRPC client dùng `AddStandardResilienceHandler()` (Polly).
 - **Health check:** phải probe dependency thật (DB/Redis), không trả "healthy" cứng.
 
+## Nghiệp vụ banking — BẮT BUỘC
+- **Ownership:** `Account.OwnerId` = JWT subject; mọi thao tác tiền kiểm tra `IsOwnedBy`. Đọc tài khoản
+  người khác → **404** (không lộ tồn tại); chuyển tiền → `FORBIDDEN_ACCOUNT`. KHÔNG cho client tự khai owner.
+- **Currency:** `EnsureCurrency` cả 2 đầu trước Debit/Credit — cộng chéo tiền tệ = tạo tiền từ không khí.
+- **Double-entry:** mỗi lệnh sinh đúng 2 `LedgerEntry` (Debit + Credit cùng `TransferId`) ⇒ tổng nợ = tổng có.
+  Ledger bất biến = nguồn sự thật (sao kê/đối soát); `Balance` chỉ là giá trị chốt nhanh. Lệnh hỏng → KHÔNG ghi bút toán.
+
 ## Cấu trúc (Clean Architecture per service — Phase 2)
 `X.Domain` (không phụ thuộc) → `X.Application` → `X.Infrastructure` (EF/Dapper, Outbox, consumer) → `X.Api`.
 Contract integration event dùng chung ở `BuildingBlocks/Contracts`.
@@ -68,6 +75,7 @@ Branch flow (giống allinone/D-Pro): `namdaoint` (dev chính, default) → `dev
 - **Bonus:** React FE (`frontend/`, port 5174) + `docs/ARCHITECTURE.md` (Mermaid).
 - **Reliability hardening:** inbox `processed_messages` (idempotent thật), `RowVersion` optimistic
   concurrency, saga `TransferCompleted`/`TransferFailed` đóng trạng thái, ProblemDetails, health check thật.
+- **Nghiệp vụ banking:** ownership + currency validation + double-entry ledger & sao kê (`/api/accounts/{n}/statement`). **30 unit tests.**
 - **Senior hardening:** correlation ID xuyên service (verified: 1 id nối log payments↔accounts), Serilog +
   OpenTelemetry, Polly trên gRPC, refresh token rotation + reuse detection. **24 unit tests.**
 - **Verified end-to-end** qua `docker compose` (transfer đổi số dư, status Completed, domain error → 400).

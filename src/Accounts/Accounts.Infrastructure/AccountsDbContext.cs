@@ -7,6 +7,7 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
 {
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<ProcessedMessage> ProcessedMessages => Set<ProcessedMessage>();
+    public DbSet<LedgerEntry> LedgerEntries => Set<LedgerEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -15,11 +16,26 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
             e.ToTable("accounts");
             e.HasKey(a => a.Id);
             e.Property(a => a.Number).HasMaxLength(50).IsRequired();
+            e.Property(a => a.OwnerId).HasMaxLength(100).IsRequired();
+            e.HasIndex(a => a.OwnerId);
             e.HasIndex(a => a.Number).IsUnique();
             e.Property(a => a.Balance).HasPrecision(18, 2);
             e.Property(a => a.Currency).HasMaxLength(3).IsRequired();
             e.Property(a => a.UpdatedAt);
             e.Property(a => a.RowVersion).IsRowVersion();   // optimistic concurrency
+        });
+
+        modelBuilder.Entity<LedgerEntry>(e =>
+        {
+            e.ToTable("ledger_entries");
+            e.HasKey(l => l.Id);
+            e.Property(l => l.AccountNumber).HasMaxLength(50).IsRequired();
+            e.Property(l => l.Currency).HasMaxLength(3).IsRequired();
+            e.Property(l => l.Amount).HasPrecision(18, 2);
+            e.Property(l => l.BalanceAfter).HasPrecision(18, 2);
+            e.Property(l => l.Direction).HasConversion<string>().HasMaxLength(10);
+            e.HasIndex(l => new { l.AccountNumber, l.CreatedAt });
+            e.HasIndex(l => l.TransferId);
         });
 
         modelBuilder.Entity<ProcessedMessage>(e =>

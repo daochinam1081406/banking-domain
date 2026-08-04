@@ -12,21 +12,24 @@ public sealed record ApplyTransferOutcome(bool Applied, bool Duplicate, string? 
 }
 
 /// <summary>
-/// Use case: áp 1 lệnh chuyển tiền lên số dư — **idempotent** qua inbox (messageId).
-/// Cập nhật số dư + đánh dấu message đã xử lý trong CÙNG 1 SaveChanges (atomic).
-/// Lỗi nghiệp vụ (số dư không đủ / account không tồn tại) là **permanent** → trả Failed để
-/// consumer phát compensating event, KHÔNG retry vô ích.
+/// Use case: áp 1 lệnh chuyển tiền — **idempotent** qua inbox (messageId).
+/// Số dư + bút toán kép + đánh dấu inbox commit trong CÙNG 1 SaveChanges (atomic).
+/// Lỗi nghiệp vụ (số dư, tiền tệ, không tồn tại) là **permanent** → trả Failed để consumer phát
+/// compensating event, KHÔNG retry vô ích.
 /// </summary>
 public sealed class MoneyTransferApplier(
     IAccountRepository repository,
     IInboxStore inbox,
+    ILedgerRepository ledger,
     IAccountCacheInvalidator cache)
 {
     public async Task<ApplyTransferOutcome> ApplyAsync(
         string messageId,
+        Guid transferId,
         string fromAccount,
         string toAccount,
         decimal amount,
+        string currency,
         CancellationToken ct = default)
     {
         if (await inbox.AlreadyProcessedAsync(messageId, ct))
@@ -42,6 +45,10 @@ public sealed class MoneyTransferApplier(
 
         try
         {
+            // Cả 2 đầu phải cùng loại tiền với lệnh — không có FX thì không được cộng chéo tiền tệ.
+            from.EnsureCurrency(currency);
+            to.EnsureCurrency(currency);
+
             from.Debit(amount);
             to.Credit(amount);
         }
@@ -50,8 +57,12 @@ public sealed class MoneyTransferApplier(
             return ApplyTransferOutcome.Failed(ex.ErrorCode, ex.Message);
         }
 
+        // Bút toán kép: 1 Debit + 1 Credit cùng TransferId ⇒ tổng nợ = tổng có.
+        ledger.Add(LedgerEntry.For(from.Number, transferId, LedgerDirection.Debit, amount, currency, from.Balance));
+        ledger.Add(LedgerEntry.For(to.Number, transferId, LedgerDirection.Credit, amount, currency, to.Balance));
+
         inbox.MarkProcessed(messageId);
-        await repository.SaveChangesAsync(ct);   // số dư + inbox commit cùng nhau
+        await repository.SaveChangesAsync(ct);   // số dư + ledger + inbox commit cùng nhau
 
         await cache.InvalidateAsync(fromAccount, ct);
         await cache.InvalidateAsync(toAccount, ct);

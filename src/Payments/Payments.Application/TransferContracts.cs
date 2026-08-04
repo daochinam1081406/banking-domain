@@ -8,7 +8,12 @@ public sealed record TransferDto(
     string Status, DateTimeOffset CreatedAt,
     DateTimeOffset? CompletedAt, string? FailureCode, string? FailureReason);
 
-public sealed record InitiateTransferCommand(string FromAccount, string ToAccount, decimal Amount, string? Currency);
+public sealed record InitiateTransferCommand(
+    string FromAccount, string ToAccount, decimal Amount, string? Currency)
+{
+    /// <summary>JWT subject của người gọi — dùng kiểm tra quyền sở hữu tài khoản nguồn.</summary>
+    public string RequestedBy { get; init; } = string.Empty;
+}
 
 public sealed record InitiateTransferResult(Guid TransferId, string Status);
 

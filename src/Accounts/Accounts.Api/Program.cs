@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using Accounts.Api;
 using Accounts.Application;
@@ -64,18 +65,34 @@ app.MapHealthChecks("/health");   // probe SQL Server (+ Redis) thật
 app.MapPost("/token", (TokenRequest req, JwtOptions opt) =>
     Results.Ok(new { token = JwtTokenFactory.Issue(opt, req.Subject ?? "demo-user", req.Role ?? "customer") }));
 
-app.MapGet("/api/accounts", async (IAccountReadService reads, CancellationToken ct) =>
-    Results.Ok(await reads.ListAsync(ct))).RequireAuthorization();
+// Chỉ liệt kê tài khoản của chính người đăng nhập (JWT sub).
+app.MapGet("/api/accounts", async (ClaimsPrincipal user, IAccountReadService reads, CancellationToken ct) =>
+    Results.Ok(await reads.ListAsync(user.Subject(), ct))).RequireAuthorization();
 
-app.MapGet("/api/accounts/{number}", async (string number, IAccountReadService reads, CancellationToken ct) =>
+app.MapGet("/api/accounts/{number}", async (
+    string number, ClaimsPrincipal user, IAccountReadService reads, CancellationToken ct) =>
 {
     var dto = await reads.GetByNumberAsync(number, ct);
-    return dto is null ? Results.NotFound() : Results.Ok(dto);
+    if (dto is null) return Results.NotFound();
+    // Không lộ tài khoản người khác — trả 404 thay vì 403 để không tiết lộ tài khoản có tồn tại.
+    return dto.OwnerId == user.Subject() ? Results.Ok(dto) : Results.NotFound();
 }).RequireAuthorization();
 
-app.MapPost("/api/accounts", async (OpenAccountRequest req, IAccountRepository repo, CancellationToken ct) =>
+// Sao kê — bút toán bất biến của tài khoản (nguồn sự thật để đối soát).
+app.MapGet("/api/accounts/{number}/statement", async (
+    string number, ClaimsPrincipal user, IAccountReadService reads,
+    ILedgerRepository ledger, CancellationToken ct) =>
 {
-    var account = Account.Open(req.Number, req.InitialBalance, req.Currency ?? "VND");
+    var dto = await reads.GetByNumberAsync(number, ct);
+    if (dto is null || dto.OwnerId != user.Subject()) return Results.NotFound();
+    return Results.Ok(await ledger.GetStatementAsync(number, 50, ct));
+}).RequireAuthorization();
+
+app.MapPost("/api/accounts", async (
+    OpenAccountRequest req, ClaimsPrincipal user, IAccountRepository repo, CancellationToken ct) =>
+{
+    // Chủ sở hữu lấy từ JWT, không cho client tự khai.
+    var account = Account.Open(req.Number, user.Subject(), req.InitialBalance, req.Currency ?? "VND");
     await repo.AddAsync(account, ct);
     await repo.SaveChangesAsync(ct);
     return Results.Created($"/api/accounts/{account.Number}",
@@ -85,4 +102,13 @@ app.MapPost("/api/accounts", async (OpenAccountRequest req, IAccountRepository r
 app.Run();
 
 public sealed record OpenAccountRequest(string Number, decimal InitialBalance, string? Currency);
+
+internal static class ClaimsPrincipalExtensions
+{
+    /// <summary>JWT subject = định danh người dùng, dùng làm chủ sở hữu tài khoản.</summary>
+    public static string Subject(this ClaimsPrincipal user)
+        => user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+        ?? user.FindFirst("sub")?.Value
+        ?? throw new InvalidOperationException("JWT thiếu subject.");
+}
 public sealed record TokenRequest(string? Subject, string? Role);

@@ -19,6 +19,7 @@ public static class DependencyInjection
 
         services.AddScoped<IAccountRepository, EfAccountRepository>();
         services.AddScoped<IInboxStore, EfInboxStore>();
+        services.AddScoped<ILedgerRepository, EfLedgerRepository>();
         services.AddScoped<MoneyTransferApplier>();
 
         // Redis cache-aside cho read số dư — bật khi có ConnectionStrings:Redis, ngược lại no-op.

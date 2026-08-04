@@ -15,6 +15,7 @@ public sealed class AccountCheckService(IAccountReadService reads) : AccountChec
             Exists = dto is not null,
             Balance = dto is null ? 0 : (double)dto.Balance,
             Currency = dto?.Currency ?? string.Empty,
+            OwnerId = dto?.OwnerId ?? string.Empty,
         };
     }
 }

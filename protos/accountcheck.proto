@@ -16,4 +16,5 @@ message AccountCheckReply {
   bool exists = 1;
   double balance = 2;
   string currency = 3;
+  string owner_id = 4;
 }

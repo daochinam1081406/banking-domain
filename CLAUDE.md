@@ -42,6 +42,7 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | Unit tests | ✅ P3 | xUnit 12 tests (Account overdraft, Transfer rules) |
 | Frontend (bonus — JD không yêu cầu) | ✅ | React+Vite+TS `frontend/` — Login (JWT), Dashboard số dư, Chuyển tiền (event-driven async) |
 | Docs | ✅ | ARCHITECTURE.md (Mermaid), k8s README, frontend README, CLAUDE.md + .cursorrules |
+| **Nghiệp vụ banking** | ✅ | Ownership (JWT sub) · currency validation · **double-entry ledger** + sao kê |
 
 **Nguyên tắc:** mỗi feature mới PHẢI ánh xạ về 1 dòng JD. Không thêm thứ ngoài scope.
 

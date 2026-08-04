@@ -10,14 +10,16 @@ public sealed class EfAccountReadService(AccountsDbContext db) : IAccountReadSer
     {
         var a = await db.Accounts.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Number == number.Trim().ToUpperInvariant(), ct);
-        return a is null ? null : new AccountDto(a.Number, a.Balance, a.Currency, a.UpdatedAt);
+        return a is null ? null : new AccountDto(a.Number, a.OwnerId, a.Balance, a.Currency, a.UpdatedAt);
     }
 
-    public async Task<IReadOnlyList<AccountDto>> ListAsync(CancellationToken ct = default)
+    // Chỉ trả tài khoản của chính chủ — không lộ tài khoản người khác.
+    public async Task<IReadOnlyList<AccountDto>> ListAsync(string ownerId, CancellationToken ct = default)
     {
         var rows = await db.Accounts.AsNoTracking()
+            .Where(a => a.OwnerId == ownerId)
             .OrderBy(a => a.Number)
-            .Select(a => new AccountDto(a.Number, a.Balance, a.Currency, a.UpdatedAt))
+            .Select(a => new AccountDto(a.Number, a.OwnerId, a.Balance, a.Currency, a.UpdatedAt))
             .ToListAsync(ct);
         return rows;
     }

@@ -10,6 +10,8 @@ public sealed class Account
 {
     public Guid Id { get; private set; }
     public string Number { get; private set; } = null!;
+    /// <summary>Chủ sở hữu (JWT subject) — không có thì ai cũng rút được tiền tài khoản người khác.</summary>
+    public string OwnerId { get; private set; } = null!;
     public decimal Balance { get; private set; }
     public string Currency { get; private set; } = "VND";
     public DateTimeOffset UpdatedAt { get; private set; }
@@ -19,10 +21,12 @@ public sealed class Account
 
     private Account() { } // EF Core
 
-    public static Account Open(string number, decimal initialBalance = 0, string currency = "VND")
+    public static Account Open(string number, string ownerId, decimal initialBalance = 0, string currency = "VND")
     {
         if (string.IsNullOrWhiteSpace(number))
             throw new AccountsDomainException("Account number bắt buộc.", "NUMBER_REQUIRED");
+        if (string.IsNullOrWhiteSpace(ownerId))
+            throw new AccountsDomainException("Chủ sở hữu bắt buộc.", "OWNER_REQUIRED");
         if (initialBalance < 0)
             throw new AccountsDomainException("Số dư ban đầu không được âm.", "BALANCE_INVALID");
 
@@ -30,10 +34,21 @@ public sealed class Account
         {
             Id = Guid.NewGuid(),
             Number = number.Trim().ToUpperInvariant(),
+            OwnerId = ownerId.Trim(),
             Balance = initialBalance,
             Currency = currency.Trim().ToUpperInvariant(),
             UpdatedAt = DateTimeOffset.UtcNow,
         };
+    }
+
+    public bool IsOwnedBy(string ownerId) => OwnerId.Equals(ownerId?.Trim(), StringComparison.Ordinal);
+
+    /// <summary>Chặn cộng/trừ khác loại tiền — nếu không sẽ "tạo tiền" (50.000 VND vào ví USD).</summary>
+    public void EnsureCurrency(string currency)
+    {
+        if (!Currency.Equals(currency?.Trim().ToUpperInvariant(), StringComparison.Ordinal))
+            throw new AccountsDomainException(
+                $"Tài khoản {Number} dùng {Currency}, không khớp {currency}.", "CURRENCY_MISMATCH");
     }
 
     public void Credit(decimal amount)
