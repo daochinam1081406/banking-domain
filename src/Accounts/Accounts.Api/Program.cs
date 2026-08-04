@@ -28,6 +28,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
+// Application Insights — chỉ bật khi có connection string (không ảnh hưởng local/dev).
+if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+    builder.Services.AddApplicationInsightsTelemetry();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())

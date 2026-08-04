@@ -33,7 +33,8 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | Clean Architecture + DDD | ✅ P2 | Domain/Application/Infra/Api, aggregate |
 | OAuth2 / OIDC / JWT | ✅ P2 | JWT bearer + /token dev, endpoints RequireAuthorization |
 | Docker | ✅ | Dockerfile + compose |
-| CI/CD, Kubernetes, App Insights | ⬜ P3 | GitHub Actions + k8s manifests |
+| CI/CD, Kubernetes, App Insights | ✅ P3 | GitHub Actions CI + k8s/AKS manifests + App Insights (conditional) |
+| Unit tests | ✅ P3 | xUnit 12 tests (Account overdraft, Transfer rules) |
 
 **Nguyên tắc:** mỗi feature mới PHẢI ánh xạ về 1 dòng JD. Không thêm thứ ngoài scope.
 
@@ -198,4 +199,4 @@ curl http://localhost:8082/api/accounts/ACC-002
 
 - **Phase 1 (done):** 2 service + Azure Service Bus pub/sub + emulator + README so sánh Kafka↔Azure.
 - **Phase 2:** SQL Server (Accounts/EF) + PostgreSQL (Payments/Dapper) + DDD/Clean Arch + Outbox + JWT + gRPC + Azure Event Grid + Kafka impl + Redis.
-- **Phase 3:** GitHub Actions CI/CD + k8s manifests (AKS) + Application Insights + Polly.
+- **Phase 3 (done):** GitHub Actions CI (build+test) + xUnit tests + k8s/AKS manifests + Application Insights (conditional). Verified e2e qua docker compose.
