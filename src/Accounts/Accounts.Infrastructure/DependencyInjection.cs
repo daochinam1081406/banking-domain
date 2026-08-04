@@ -4,6 +4,7 @@ using BuildingBlocks.Messaging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 
 namespace Accounts.Infrastructure;
 
@@ -17,8 +18,24 @@ public static class DependencyInjection
         services.AddDbContext<AccountsDbContext>(o => o.UseSqlServer(connStr));
 
         services.AddScoped<IAccountRepository, EfAccountRepository>();
-        services.AddScoped<IAccountReadService, EfAccountReadService>();
         services.AddScoped<MoneyTransferApplier>();
+
+        // Redis cache-aside cho read số dư — bật khi có ConnectionStrings:Redis, ngược lại no-op.
+        var redisConn = config.GetConnectionString("Redis");
+        if (!string.IsNullOrWhiteSpace(redisConn))
+        {
+            services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConn));
+            services.AddScoped<EfAccountReadService>();
+            services.AddScoped<IAccountReadService>(sp => new CachedAccountReadService(
+                sp.GetRequiredService<EfAccountReadService>(),
+                sp.GetRequiredService<IConnectionMultiplexer>()));
+            services.AddSingleton<IAccountCacheInvalidator, RedisAccountCacheInvalidator>();
+        }
+        else
+        {
+            services.AddScoped<IAccountReadService, EfAccountReadService>();
+            services.AddSingleton<IAccountCacheInvalidator, NoOpAccountCacheInvalidator>();
+        }
 
         services.Configure<ServiceBusOptions>(config.GetSection("ServiceBus"));
         services.AddHostedService<MoneyTransferConsumer>();

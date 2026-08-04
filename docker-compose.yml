@@ -21,6 +21,11 @@ services:
     ports:
       - "5432:5432"
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
   servicebus-emulator:
     image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
     depends_on:
@@ -41,8 +46,10 @@ services:
     depends_on:
       - servicebus-emulator
       - postgres
+      - accounts-api
     environment:
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=payments;Username=postgres;Password=postgres"
+      Grpc__AccountsUrl: "http://accounts-api:8080"
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ServiceBus__TopicName: "banking-events"
     ports:
@@ -55,8 +62,10 @@ services:
     depends_on:
       - servicebus-emulator
       - mssql
+      - redis
     environment:
       ConnectionStrings__SqlServer: "Server=mssql,1433;Database=accounts;User Id=sa;Password=Str0ng!Passw0rd;TrustServerCertificate=true;"
+      ConnectionStrings__Redis: "redis:6379"
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ServiceBus__TopicName: "banking-events"
       ServiceBus__SubscriptionName: "accounts-subscription"

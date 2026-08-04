@@ -1,4 +1,5 @@
 using System.Text;
+using Accounts.Api;
 using Accounts.Application;
 using Accounts.Domain;
 using Accounts.Infrastructure;
@@ -9,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddAccountsInfrastructure(builder.Configuration);
+builder.Services.AddGrpc();
 
 // ── JWT auth (OAuth2/OIDC bearer) ────────────────────────────────
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
@@ -38,7 +40,8 @@ using (var scope = app.Services.CreateScope())
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/", () => "Accounts.Api — GET /api/accounts/{number}");
+app.MapGrpcService<AccountCheckService>();
+app.MapGet("/", () => "Accounts.Api — GET /api/accounts/{number} · gRPC AccountCheck");
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "accounts" }));
 
 app.MapPost("/token", (TokenRequest req, JwtOptions opt) =>

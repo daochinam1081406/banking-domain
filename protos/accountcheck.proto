@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option csharp_namespace = "Banking.Grpc";
+package accountcheck;
+
+// Sync inter-service call: Payments hỏi Accounts số dư/tồn tại trước khi tạo transfer.
+service AccountCheck {
+  rpc Check (AccountCheckRequest) returns (AccountCheckReply);
+}
+
+message AccountCheckRequest {
+  string number = 1;
+}
+
+message AccountCheckReply {
+  bool exists = 1;
+  double balance = 2;
+  string currency = 3;
+}

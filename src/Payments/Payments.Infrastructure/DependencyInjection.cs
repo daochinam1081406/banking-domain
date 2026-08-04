@@ -19,6 +19,11 @@ public static class DependencyInjection
         services.AddScoped<ITransferReadService, DapperTransferReadService>();
         services.AddScoped<InitiateTransferHandler>();
 
+        // gRPC client → Accounts AccountCheck (sync validate số dư)
+        var accountsGrpcUrl = config["Grpc:AccountsUrl"] ?? "http://localhost:8082";
+        services.AddGrpcClient<Banking.Grpc.AccountCheck.AccountCheckClient>(o => o.Address = new Uri(accountsGrpcUrl));
+        services.AddScoped<IAccountChecker, GrpcAccountChecker>();
+
         services.AddEventBus(config);                   // IEventBus: ServiceBus | EventGrid | Kafka
         services.AddHostedService<OutboxPublisher>();   // outbox → broker đã chọn
         return services;

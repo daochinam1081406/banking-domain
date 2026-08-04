@@ -23,13 +23,13 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | **SQL Server** (data modeling) | ✅ P2 | Accounts + EF Core + migration |
 | **PostgreSQL** (query optimization) | ✅ P2 | Payments + Dapper raw SQL |
 | **Outbox pattern** | ✅ P2 | Payments: transfer + outbox 1 tx → publisher |
-| Redis | ⬜ P2 | cache số dư / read model |
+| Redis | ✅ P2 | cache-aside số dư (Accounts) + invalidate khi transfer |
 | **Azure Service Bus** | ✅ P1 | `AzureServiceBusEventBus` |
 | **Azure Event Grid** | ✅ P2 | `EventGridEventBus` (chọn qua `Messaging:Provider`) |
 | **Kafka** | ✅ P2 | `KafkaEventBus` (chọn qua `Messaging:Provider`) |
 | Microservices architecture | ✅ | 2 service tách, **DB-per-service** (SQL Server + Postgres) |
 | Event-driven architecture | ✅ | integration events qua broker + Outbox |
-| RESTful API (gRPC plus) | ✅ / ⬜ gRPC P2 | Minimal API |
+| RESTful API + **gRPC** | ✅ P2 | Minimal API + gRPC AccountCheck (Payments→Accounts sync) |
 | Clean Architecture + DDD | ✅ P2 | Domain/Application/Infra/Api, aggregate |
 | OAuth2 / OIDC / JWT | ✅ P2 | JWT bearer + /token dev, endpoints RequireAuthorization |
 | Docker | ✅ | Dockerfile + compose |

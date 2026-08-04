@@ -4,11 +4,10 @@ using Accounts.Domain.Exceptions;
 namespace Accounts.Application;
 
 /// <summary>
-/// Use case: áp 1 lệnh chuyển tiền lên read model số dư (debit from, credit to).
-/// Consumer gọi handler này khi nhận MoneyTransferred từ Service Bus.
-/// Idempotency + ordering do consumer/broker đảm bảo; use case chỉ lo invariant domain.
+/// Use case: áp 1 lệnh chuyển tiền lên read model số dư (debit from, credit to) + invalidate cache.
+/// Consumer gọi khi nhận MoneyTransferred từ broker.
 /// </summary>
-public sealed class MoneyTransferApplier(IAccountRepository repository)
+public sealed class MoneyTransferApplier(IAccountRepository repository, IAccountCacheInvalidator cache)
 {
     public async Task ApplyAsync(
         string fromAccount, string toAccount, decimal amount, string currency, CancellationToken ct = default)
@@ -21,5 +20,8 @@ public sealed class MoneyTransferApplier(IAccountRepository repository)
         from.Debit(amount);
         to.Credit(amount);
         await repository.SaveChangesAsync(ct);
+
+        await cache.InvalidateAsync(fromAccount, ct);
+        await cache.InvalidateAsync(toAccount, ct);
     }
 }
