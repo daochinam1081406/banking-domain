@@ -33,7 +33,12 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AccountsDbContext>();
-    db.Database.Migrate();
+    // Retry chờ SQL Server sẵn sàng (container start ≠ DB ready).
+    for (var attempt = 1; ; attempt++)
+    {
+        try { db.Database.Migrate(); break; }
+        catch when (attempt < 12) { await Task.Delay(TimeSpan.FromSeconds(3)); }
+    }
     AccountSeeder.Seed(db);
 }
 

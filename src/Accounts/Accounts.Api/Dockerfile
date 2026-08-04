@@ -14,6 +14,7 @@ RUN dotnet publish src/Accounts/Accounts.Api/Accounts.Api.csproj -c Release -o /
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 WORKDIR /app
 COPY --from=build /app ./
-ENV ASPNETCORE_URLS=http://+:8080
+# REST trên 8080 (Http1), gRPC trên 8090 (Http2 h2c) — cấu hình qua Kestrel:Endpoints (appsettings)
 EXPOSE 8080
+EXPOSE 8090
 ENTRYPOINT ["dotnet", "Accounts.Api.dll"]

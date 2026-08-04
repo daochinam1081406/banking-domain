@@ -30,9 +30,22 @@ public static class SchemaInitializer
             ON outbox (created_at) WHERE status = 'PENDING';
         """;
 
+    // Retry chờ Postgres sẵn sàng (container start ≠ DB ready). Portable — chạy cả trên k8s.
     public static async Task EnsureCreatedAsync(NpgsqlDataSource dataSource, CancellationToken ct = default)
     {
-        await using var conn = await dataSource.OpenConnectionAsync(ct);
-        await conn.ExecuteAsync(new CommandDefinition(Ddl, cancellationToken: ct));
+        const int maxAttempts = 12;
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await using var conn = await dataSource.OpenConnectionAsync(ct);
+                await conn.ExecuteAsync(new CommandDefinition(Ddl, cancellationToken: ct));
+                return;
+            }
+            catch when (attempt < maxAttempts)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(3), ct);
+            }
+        }
     }
 }

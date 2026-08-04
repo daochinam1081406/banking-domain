@@ -19,12 +19,12 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"   # host 5433 để tránh đụng D-Pro (deploy-postgres-1:5432)
 
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6380:6379"   # host 6380 để tránh đụng D-Pro (deploy-redis-1:6379)
 
   servicebus-emulator:
     image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
@@ -49,7 +49,7 @@ services:
       - accounts-api
     environment:
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=payments;Username=postgres;Password=postgres"
-      Grpc__AccountsUrl: "http://accounts-api:8080"
+      Grpc__AccountsUrl: "http://accounts-api:8090"
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ServiceBus__TopicName: "banking-events"
     ports:
