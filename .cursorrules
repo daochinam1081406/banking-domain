@@ -40,7 +40,7 @@ Contract integration event dùng chung ở `BuildingBlocks/Contracts`.
 ❌ KHÔNG thêm dòng Co-Authored-By vào commit
 ❌ KHÔNG commit secrets / connection string thật / token (dùng env var + user-secrets; push token inline rồi revoke)
 ```
-Branch chính: `main`.
+Branch flow (giống allinone/D-Pro): `namdaoint` (dev chính, default) → `develop` → `staging` → `production`.
 
 ## Trạng thái
 Phase 1 done: Payments + Accounts + Azure Service Bus + emulator + docker-compose + README (so sánh

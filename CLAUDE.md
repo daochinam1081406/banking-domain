@@ -175,7 +175,9 @@ git commit -m "docs: update scope mapping"
 # ❌ TUYỆT ĐỐI KHÔNG thêm dòng Co-Authored-By vào commit
 # ❌ KHÔNG commit secrets / connection string thật / token — dùng env var + user-secrets
 ```
-- Branch chính: `main`. Prefix: `feat: fix: docs: refactor: test: chore:`.
+- **Branch flow (giống allinone/D-Pro):** `namdaoint` (dev chính, default) → `develop` → `staging` → `production`.
+  Làm việc trên `namdaoint`, PR/merge lên develop → staging → production.
+- Prefix conventional: `feat: fix: docs: refactor: test: chore:`.
 - Token/PAT: KHÔNG lưu vào `.git/config` hay file; push dùng token inline rồi revoke.
 
 ---
