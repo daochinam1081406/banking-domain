@@ -21,19 +21,25 @@ public sealed class AzureServiceBusEventBus : IEventBus, IAsyncDisposable
         _logger = logger;
     }
 
-    public async Task PublishAsync<T>(T @event, CancellationToken ct = default)
+    public Task PublishAsync<T>(T @event, CancellationToken ct = default)
         where T : IntegrationEvent
+        => PublishRawAsync(
+            @event.EventType,
+            JsonSerializer.Serialize(@event, @event.GetType()),
+            @event.EventId.ToString(),
+            ct);
+
+    public async Task PublishRawAsync(
+        string eventType, string jsonPayload, string messageId, CancellationToken ct = default)
     {
-        var body = JsonSerializer.Serialize(@event, @event.GetType());
-        var message = new ServiceBusMessage(body)
+        var message = new ServiceBusMessage(jsonPayload)
         {
-            Subject     = @event.EventType,          // subscription filter routing
-            MessageId   = @event.EventId.ToString(), // dedup / idempotency
+            Subject     = eventType,   // subscription filter routing
+            MessageId   = messageId,   // dedup / idempotency
             ContentType = "application/json",
         };
         await _sender.SendMessageAsync(message, ct);
-        _logger.LogInformation(
-            "Published {EventType} {EventId} → Service Bus topic", @event.EventType, @event.EventId);
+        _logger.LogInformation("Published {EventType} {MessageId} → Service Bus topic", eventType, messageId);
     }
 
     public async ValueTask DisposeAsync()

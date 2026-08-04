@@ -3,6 +3,9 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 COPY BankingDomain.sln ./
 COPY src/BuildingBlocks/BuildingBlocks.csproj src/BuildingBlocks/
+COPY src/Accounts/Accounts.Domain/Accounts.Domain.csproj src/Accounts/Accounts.Domain/
+COPY src/Accounts/Accounts.Application/Accounts.Application.csproj src/Accounts/Accounts.Application/
+COPY src/Accounts/Accounts.Infrastructure/Accounts.Infrastructure.csproj src/Accounts/Accounts.Infrastructure/
 COPY src/Accounts/Accounts.Api/Accounts.Api.csproj src/Accounts/Accounts.Api/
 RUN dotnet restore src/Accounts/Accounts.Api/Accounts.Api.csproj
 COPY . .

@@ -3,6 +3,9 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 COPY BankingDomain.sln ./
 COPY src/BuildingBlocks/BuildingBlocks.csproj src/BuildingBlocks/
+COPY src/Payments/Payments.Domain/Payments.Domain.csproj src/Payments/Payments.Domain/
+COPY src/Payments/Payments.Application/Payments.Application.csproj src/Payments/Payments.Application/
+COPY src/Payments/Payments.Infrastructure/Payments.Infrastructure.csproj src/Payments/Payments.Infrastructure/
 COPY src/Payments/Payments.Api/Payments.Api.csproj src/Payments/Payments.Api/
 RUN dotnet restore src/Payments/Payments.Api/Payments.Api.csproj
 COPY . .

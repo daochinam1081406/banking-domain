@@ -1,7 +1,8 @@
 name: banking-domain
 
-# Chạy end-to-end local: mssql (backing store cho emulator) → Azure Service Bus emulator →
-# payments-api (publish) + accounts-api (consume). Không cần Azure subscription thật.
+# Chạy end-to-end local: mssql (Accounts DB + backing store cho emulator) + postgres (Payments DB)
+# → Azure Service Bus emulator → payments-api (publish qua Outbox) + accounts-api (consume).
+# Không cần Azure subscription thật.
 services:
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -10,6 +11,15 @@ services:
       MSSQL_SA_PASSWORD: "Str0ng!Passw0rd"
     ports:
       - "1433:1433"
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: payments
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
 
   servicebus-emulator:
     image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
@@ -30,7 +40,9 @@ services:
       dockerfile: src/Payments/Payments.Api/Dockerfile
     depends_on:
       - servicebus-emulator
+      - postgres
     environment:
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=payments;Username=postgres;Password=postgres"
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ServiceBus__TopicName: "banking-events"
     ports:
@@ -42,7 +54,9 @@ services:
       dockerfile: src/Accounts/Accounts.Api/Dockerfile
     depends_on:
       - servicebus-emulator
+      - mssql
     environment:
+      ConnectionStrings__SqlServer: "Server=mssql,1433;Database=accounts;User Id=sa;Password=Str0ng!Passw0rd;TrustServerCertificate=true;"
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ServiceBus__TopicName: "banking-events"
       ServiceBus__SubscriptionName: "accounts-subscription"

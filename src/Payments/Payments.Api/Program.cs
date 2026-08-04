@@ -1,39 +1,42 @@
-using BuildingBlocks.Contracts;
-using BuildingBlocks.Messaging;
+using Npgsql;
+using Payments.Application;
+using Payments.Domain.Exceptions;
+using Payments.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddAzureServiceBus(builder.Configuration);
+builder.Services.AddPaymentsInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+// Tạo schema transfers + outbox khi khởi động.
+using (var scope = app.Services.CreateScope())
+{
+    var dataSource = scope.ServiceProvider.GetRequiredService<NpgsqlDataSource>();
+    await SchemaInitializer.EnsureCreatedAsync(dataSource);
+}
 
 app.MapGet("/", () => "Payments.Api — POST /api/transfers");
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "payments" }));
 
-// POST /api/transfers → publish MoneyTransferred lên Azure Service Bus.
-// (Phase 2: persist Transfer aggregate + Outbox trong 1 transaction trước khi publish)
-app.MapPost("/api/transfers", async (TransferRequest req, IEventBus bus, CancellationToken ct) =>
+// POST /api/transfers → Transfer + outbox trong 1 transaction; OutboxPublisher đẩy lên Service Bus.
+app.MapPost("/api/transfers", async (
+    InitiateTransferCommand cmd, InitiateTransferHandler handler, CancellationToken ct) =>
 {
-    if (req.Amount <= 0)
-        return Results.BadRequest(new { error = "AMOUNT_INVALID", message = "Amount phải > 0." });
-    if (string.IsNullOrWhiteSpace(req.FromAccount) || string.IsNullOrWhiteSpace(req.ToAccount))
-        return Results.BadRequest(new { error = "ACCOUNT_REQUIRED" });
-    if (req.FromAccount == req.ToAccount)
-        return Results.BadRequest(new { error = "SAME_ACCOUNT" });
-
-    var transferId = Guid.NewGuid();
-    await bus.PublishAsync(new MoneyTransferredIntegrationEvent
+    try
     {
-        TransferId  = transferId,
-        FromAccount = req.FromAccount.Trim(),
-        ToAccount   = req.ToAccount.Trim(),
-        Amount      = req.Amount,
-        Currency    = string.IsNullOrWhiteSpace(req.Currency) ? "VND" : req.Currency.Trim().ToUpperInvariant(),
-    }, ct);
+        var result = await handler.HandleAsync(cmd, ct);
+        return Results.Accepted($"/api/transfers/{result.TransferId}", result);
+    }
+    catch (PaymentsDomainException ex)
+    {
+        return Results.BadRequest(new { error = ex.ErrorCode, message = ex.Message });
+    }
+});
 
-    return Results.Accepted($"/api/transfers/{transferId}",
-        new { transferId, status = "Published" });
+app.MapGet("/api/transfers/{id:guid}", async (Guid id, ITransferReadService reads, CancellationToken ct) =>
+{
+    var dto = await reads.GetByIdAsync(id, ct);
+    return dto is null ? Results.NotFound() : Results.Ok(dto);
 });
 
 app.Run();
-
-public sealed record TransferRequest(string FromAccount, string ToAccount, decimal Amount, string? Currency);

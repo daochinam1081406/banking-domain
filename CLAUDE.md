@@ -20,16 +20,17 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | JD yêu cầu | Trạng thái | Ở đâu |
 |-----------|-----------|-------|
 | .NET Core / ASP.NET Core | ✅ | .NET 9 Minimal API |
-| **SQL Server** (data modeling) | ⬜ P2 | Accounts + EF Core |
-| **PostgreSQL** (query optimization) | ⬜ P2 | Payments + Dapper |
+| **SQL Server** (data modeling) | ✅ P2 | Accounts + EF Core + migration |
+| **PostgreSQL** (query optimization) | ✅ P2 | Payments + Dapper raw SQL |
+| **Outbox pattern** | ✅ P2 | Payments: transfer + outbox 1 tx → publisher |
 | Redis | ⬜ P2 | cache số dư / read model |
 | **Azure Service Bus** | ✅ P1 | `AzureServiceBusEventBus` |
 | **Azure Event Grid** | ⬜ P2 | impl `IEventBus` thứ 2 |
 | **Kafka** | ⬜ P2 | impl `IEventBus` thứ 3 |
-| Microservices architecture | ✅ | service tách, DB-per-service |
-| Event-driven architecture | ✅ | integration events qua broker |
+| Microservices architecture | ✅ | 2 service tách, **DB-per-service** (SQL Server + Postgres) |
+| Event-driven architecture | ✅ | integration events qua broker + Outbox |
 | RESTful API (gRPC plus) | ✅ / ⬜ gRPC P2 | Minimal API |
-| Clean Architecture + DDD | ⬜ P2 | Domain/Application/Infra/Api |
+| Clean Architecture + DDD | ✅ P2 | Domain/Application/Infra/Api, aggregate |
 | OAuth2 / OIDC / JWT | ⬜ P2 | JWT bearer |
 | Docker | ✅ | Dockerfile + compose |
 | CI/CD, Kubernetes, App Insights | ⬜ P3 | GitHub Actions + k8s manifests |
