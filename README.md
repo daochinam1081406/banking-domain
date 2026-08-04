@@ -26,17 +26,27 @@ POST /api/transfers                         GET /api/accounts/{id}
 - **Payments.Api** — nhận lệnh chuyển tiền → publish `MoneyTransferredIntegrationEvent` (MessageId = idempotency).
 - **Accounts.Api** — consume qua subscription, cập nhật số dư; `MaxDeliveryCount=5` → dead-letter.
 
-## Chạy local (không cần Azure thật)
+## Chạy local (không cần Azure thật) — ✅ đã verify end-to-end
 
 ```bash
-docker compose up --build          # mssql → Service Bus emulator → 2 services
-# Publish 1 giao dịch:
-curl -X POST http://localhost:8081/api/transfers \
+docker compose up -d --build       # mssql + postgres + redis + Service Bus emulator + 2 service
+
+# 1) Lấy JWT (endpoint nghiệp vụ yêu cầu Bearer token)
+TOKEN=$(curl -s -X POST http://localhost:8081/token -H "Content-Type: application/json" \
+  -d '{"subject":"demo","role":"customer"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+
+# 2) Chuyển tiền (Payments: gRPC validate số dư → Outbox → Service Bus)
+curl -X POST http://localhost:8081/api/transfers -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"fromAccount":"ACC-001","toAccount":"ACC-002","amount":500000,"currency":"VND"}'
-# Kiểm tra số dư (Accounts đã consume event):
-curl http://localhost:8082/api/accounts/ACC-002
+
+# 3) Kiểm tra số dư (Accounts đã consume event, cập nhật SQL Server)
+curl http://localhost:8082/api/accounts/ACC-002 -H "Authorization: Bearer $TOKEN"
+# ACC-001: 10,000,000 → 9,500,000 · ACC-002: 5,000,000 → 5,500,000  (seed sẵn ACC-001/002/003)
 ```
+
+**Ports:** Payments REST `8081` · Accounts REST `8082` · Accounts gRPC `8090` (Http2 h2c, nội bộ) ·
+postgres `5433` · redis `6380` · mssql `1433` · Service Bus emulator `5672`.
 
 ## Tech stack
 .NET 9 · ASP.NET Core Minimal API · **SQL Server + EF Core** (Accounts) · **PostgreSQL + Dapper**
