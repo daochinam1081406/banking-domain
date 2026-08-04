@@ -33,6 +33,16 @@ public static class SchemaInitializer
 
         ALTER TABLE outbox ADD COLUMN IF NOT EXISTS correlation_id VARCHAR(64);
 
+        -- Refresh token: chỉ lưu SHA-256 hash; family_id nhóm token cùng phiên (reuse detection)
+        CREATE TABLE IF NOT EXISTS refresh_tokens (
+            token_hash  VARCHAR(64)  PRIMARY KEY,
+            subject     VARCHAR(100) NOT NULL,
+            family_id   VARCHAR(64)  NOT NULL,
+            expires_at  TIMESTAMPTZ  NOT NULL,
+            revoked_at  TIMESTAMPTZ
+        );
+        CREATE INDEX IF NOT EXISTS idx_refresh_family ON refresh_tokens (family_id);
+
         CREATE INDEX IF NOT EXISTS idx_outbox_pending
             ON outbox (created_at) WHERE status = 'PENDING';
         """;

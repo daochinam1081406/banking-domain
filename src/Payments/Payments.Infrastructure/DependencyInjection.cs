@@ -1,3 +1,4 @@
+using BuildingBlocks.Auth;
 using BuildingBlocks.Messaging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +29,8 @@ public static class DependencyInjection
         services.AddScoped<IAccountChecker, GrpcAccountChecker>();
 
         services.AddScoped<ITransferStatusWriter, DapperTransferStatusWriter>();
+        services.AddScoped<IRefreshTokenStore, DapperRefreshTokenStore>();
+        services.AddScoped<TokenService>();
 
         services.AddEventBus(config);                          // IEventBus: ServiceBus | EventGrid | Kafka
         services.AddHostedService<OutboxPublisher>();          // outbox → broker đã chọn

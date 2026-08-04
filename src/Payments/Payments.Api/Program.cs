@@ -52,7 +52,20 @@ app.UseAuthorization();
 app.MapGet("/", () => "Payments.Api — POST /api/transfers");
 app.MapHealthChecks("/health");   // probe Postgres thật
 
-// Dev token (production: thay bằng OAuth2/OIDC identity provider)
+// ── Auth: access token ngắn hạn + refresh token rotation (production: thay bằng IdP OAuth2/OIDC) ──
+app.MapPost("/auth/login", async (TokenRequest req, TokenService tokens, CancellationToken ct) =>
+    Results.Ok(await tokens.LoginAsync(req.Subject ?? "demo-user", req.Role ?? "customer", ct)));
+
+app.MapPost("/auth/refresh", async (RefreshRequest req, TokenService tokens, CancellationToken ct) =>
+    Results.Ok(await tokens.RefreshAsync(req.RefreshToken, ct)));
+
+app.MapPost("/auth/logout", async (RefreshRequest req, TokenService tokens, CancellationToken ct) =>
+{
+    await tokens.LogoutAsync(req.RefreshToken, ct);
+    return Results.NoContent();
+});
+
+// Alias cũ — giữ để README/script hiện có không gãy.
 app.MapPost("/token", (TokenRequest req, JwtOptions opt) =>
     Results.Ok(new { token = JwtTokenFactory.Issue(opt, req.Subject ?? "demo-user", req.Role ?? "customer") }));
 
@@ -79,3 +92,4 @@ app.MapGet("/api/transfers/{id:guid}", async (Guid id, ITransferReadService read
 app.Run();
 
 public sealed record TokenRequest(string? Subject, string? Role);
+public sealed record RefreshRequest(string RefreshToken);
