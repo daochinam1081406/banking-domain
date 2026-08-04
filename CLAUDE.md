@@ -1,8 +1,11 @@
 # banking-domain — Project Brief for AI Assistants
 
 > Đọc file này trước khi làm bất kỳ task nào. Repo này theo cùng bộ quy tắc "allinone" (D-Pro):
-> conventions code, git, tài liệu đồng nhất. `.cursorrules` là bản mirror của file này — sửa file
-> nào thì cập nhật file kia song song.
+> conventions code, git, tài liệu đồng nhất.
+>
+> ⚠️ **QUY TẮC ĐỒNG BỘ (bắt buộc):** `.cursorrules` là bản mirror của file này để Cursor AI hỗ trợ song song.
+> **Sửa CLAUDE.md thì PHẢI cập nhật `.cursorrules` trong cùng commit** (và ngược lại) — đặc biệt khi đổi:
+> scope mapping, patterns/reliability rules, conventions, trạng thái. Lệch 2 file = Cursor sinh code sai context.
 
 ---
 

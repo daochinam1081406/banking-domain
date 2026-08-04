@@ -28,7 +28,20 @@ Mỗi feature PHẢI map về 1 dòng JD (xem bảng §2 trong CLAUDE.md). KHÔN
 5. Comment WHY, không WHAT. Validate ở boundary (API / VO ctor).
 6. Domain exception kế thừa Exception + `string ErrorCode`. Strongly-typed IDs (record).
 7. Integration event : `IntegrationEvent`; MessageId=EventId (idempotency), Subject=EventType (routing).
-8. Consumer idempotent, `AutoCompleteMessages=false`, Complete/Abandon → dead-letter theo MaxDeliveryCount.
+8. Consumer `AutoCompleteMessages=false`; Complete khi xong, Abandon khi lỗi hạ tầng.
+9. DTO record + Dapper: số positional params PHẢI khớp số cột SELECT; `DateTimeOffset` cần type handler
+   (`PersistenceConventions.Apply()`) vì Npgsql trả `DateTime` cho `timestamptz`.
+
+## Reliability — BẮT BUỘC khi thêm consumer/lệnh mới
+- **Inbox/dedup:** check `IInboxStore.AlreadyProcessedAsync(messageId)` trước khi áp side-effect;
+  `MarkProcessed` commit **cùng transaction** với thay đổi dữ liệu. Broker chỉ at-least-once →
+  không có inbox = trừ tiền 2 lần. KHÔNG được chỉ "tin" MessageId của broker.
+- **Optimistic concurrency:** entity bị sửa song song phải có `RowVersion`; retry `DbUpdateConcurrencyException`.
+- **Phân loại lỗi:** nghiệp vụ (permanent) → phát compensating event + Complete message (đừng retry vô ích);
+  hạ tầng (transient) → Abandon để broker giao lại; payload hỏng → DeadLetter thẳng.
+- **Saga:** mọi lệnh phải có trạng thái cuối (Completed/Failed) — không để kẹt ở trạng thái khởi tạo.
+- **Error response:** domain exception → 400 ProblemDetails qua `UseDomainExceptionHandler()`, không để lộ 500.
+- **Health check:** phải probe dependency thật (DB/Redis), không trả "healthy" cứng.
 
 ## Cấu trúc (Clean Architecture per service — Phase 2)
 `X.Domain` (không phụ thuộc) → `X.Application` → `X.Infrastructure` (EF/Dapper, Outbox, consumer) → `X.Api`.
@@ -42,7 +55,13 @@ Contract integration event dùng chung ở `BuildingBlocks/Contracts`.
 ```
 Branch flow (giống allinone/D-Pro): `namdaoint` (dev chính, default) → `develop` → `staging` → `production`.
 
-## Trạng thái
-Phase 1 done: Payments + Accounts + Azure Service Bus + emulator + docker-compose + README (so sánh
-Kafka↔Service Bus↔Event Grid). Phase 2: SQL Server/EF + PostgreSQL/Dapper + DDD/Clean Arch + Outbox +
-JWT + gRPC + Event Grid + Kafka + Redis. Phase 3: CI/CD + k8s + App Insights.
+## Trạng thái — TẤT CẢ PHASE DONE ✅
+- **P1:** Payments + Accounts + Azure Service Bus + emulator + docker-compose.
+- **P2:** SQL Server/EF (Accounts) + PostgreSQL/Dapper (Payments) + DDD/Clean Arch 4 layer + Outbox +
+  JWT + gRPC (h2c port 8090) + Event Grid + Kafka (`Messaging:Provider`) + Redis cache-aside.
+- **P3:** GitHub Actions CI (file ở `deploy/ci/ci.yml.reference`) + xUnit **18 tests** + k8s/AKS manifests
+  + Application Insights (conditional).
+- **Bonus:** React FE (`frontend/`, port 5174) + `docs/ARCHITECTURE.md` (Mermaid).
+- **Reliability hardening:** inbox `processed_messages` (idempotent thật), `RowVersion` optimistic
+  concurrency, saga `TransferCompleted`/`TransferFailed` đóng trạng thái, ProblemDetails, health check thật.
+- **Verified end-to-end** qua `docker compose` (transfer đổi số dư, status Completed, domain error → 400).
