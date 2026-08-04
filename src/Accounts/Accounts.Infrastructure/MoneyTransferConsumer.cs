@@ -1,19 +1,23 @@
 using System.Text.Json;
+using Accounts.Application;
 using Azure.Messaging.ServiceBus;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Messaging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Accounts.Api;
+namespace Accounts.Infrastructure;
 
 /// <summary>
-/// Consume message từ Azure Service Bus subscription → cập nhật số dư.
-/// MessageId dùng cho idempotency; CompleteMessage sau khi xử lý thành công,
-/// lỗi → AbandonMessage để retry, quá số lần → dead-letter queue (Service Bus tự động).
+/// Consume MoneyTransferred từ Azure Service Bus subscription → áp lên số dư (SQL Server).
+/// Scope-per-message để resolve MoneyTransferApplier (phụ thuộc DbContext scoped).
+/// Complete khi thành công; lỗi domain → Abandon (retry) → quá MaxDeliveryCount → dead-letter.
 /// </summary>
 public sealed class MoneyTransferConsumer(
+    IServiceScopeFactory scopeFactory,
     IOptions<ServiceBusOptions> options,
-    AccountStore store,
     ILogger<MoneyTransferConsumer> logger) : BackgroundService
 {
     private ServiceBusClient? _client;
@@ -34,7 +38,7 @@ public sealed class MoneyTransferConsumer(
         };
 
         await _processor.StartProcessingAsync(stoppingToken);
-        logger.LogInformation("Accounts consumer đang lắng nghe {Topic}/{Sub}", opt.TopicName, opt.SubscriptionName);
+        logger.LogInformation("Accounts consumer lắng nghe {Topic}/{Sub}", opt.TopicName, opt.SubscriptionName);
     }
 
     private async Task OnMessageAsync(ProcessMessageEventArgs args)
@@ -43,11 +47,12 @@ public sealed class MoneyTransferConsumer(
         {
             if (args.Message.Subject == nameof(MoneyTransferredIntegrationEvent))
             {
-                var e = JsonSerializer.Deserialize<MoneyTransferredIntegrationEvent>(
-                    args.Message.Body.ToString());
+                var e = JsonSerializer.Deserialize<MoneyTransferredIntegrationEvent>(args.Message.Body.ToString());
                 if (e is not null)
                 {
-                    store.Apply(e.FromAccount, e.ToAccount, e.Amount);
+                    await using var scope = scopeFactory.CreateAsyncScope();
+                    var applier = scope.ServiceProvider.GetRequiredService<MoneyTransferApplier>();
+                    await applier.ApplyAsync(e.FromAccount, e.ToAccount, e.Amount, e.Currency, args.CancellationToken);
                     logger.LogInformation(
                         "Applied transfer {TransferId}: {From} → {To} {Amount} {Currency}",
                         e.TransferId, e.FromAccount, e.ToAccount, e.Amount, e.Currency);
