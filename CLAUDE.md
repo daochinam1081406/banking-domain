@@ -40,7 +40,7 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | Docker | ✅ | Dockerfile + compose |
 | CI/CD, Kubernetes, App Insights | ✅ P3 | GitHub Actions CI + k8s/AKS manifests + App Insights (conditional) |
 | Unit tests | ✅ P3 | xUnit 12 tests (Account overdraft, Transfer rules) |
-| Frontend (bonus — JD không yêu cầu) | ✅ | React+Vite+TS `frontend/` — Login (JWT), Dashboard số dư, Chuyển tiền (event-driven async) |
+| Frontend (bonus — JD không yêu cầu) | ✅ | React+Vite+TS `frontend/` — Login (JWT), Dashboard (tài khoản của mình + **sao kê bút toán kép**), Chuyển tiền (event-driven async) |
 | Docs | ✅ | ARCHITECTURE.md (Mermaid), k8s README, frontend README, CLAUDE.md + .cursorrules |
 | **Nghiệp vụ banking** | ✅ | Ownership (JWT sub) · currency validation · **double-entry ledger** + sao kê |
 
