@@ -85,7 +85,20 @@ JD yêu cầu cả **Azure Service Bus + Azure Event Grid + Kafka**. Cả ba đ�
 **Tư duy chuyển đổi:** Kafka topic+partition+consumer group ≈ Service Bus topic+subscription+competing
 consumers. Outbox pattern (đảm bảo publish sau khi commit DB) áp dụng chung cho cả hai.
 
-## Roadmap
-- **Phase 1 (hiện tại):** 2 service + Service Bus pub/sub + emulator + README. ✅
-- **Phase 2:** PostgreSQL per-service (EF Core + Dapper), Account/Transfer aggregate (DDD + Clean Architecture), **Outbox pattern**, JWT auth, **gRPC** (Payments → Accounts validate), **Azure Event Grid** cho `AccountOpened`.
-- **Phase 3:** GitHub Actions CI/CD, Kubernetes manifests (AKS), Application Insights, Polly resilience.
+## Frontend (React + Vite + TS)
+Banking console (`frontend/`) — Login (JWT) · Dashboard số dư · Chuyển tiền (thể hiện event-driven
+async). JD không yêu cầu FE; làm để tường minh luồng nghiệp vụ. Xem `frontend/README.md`.
+```bash
+cd frontend && npm install && npm run dev   # http://localhost:5174
+```
+
+## Tài liệu
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — sơ đồ component + sequence (Mermaid), nguyên tắc thiết kế
+- [`deploy/k8s/README.md`](deploy/k8s/README.md) — deploy AKS
+- `CLAUDE.md` / `.cursorrules` — brief cho AI assistant (quy tắc allinone)
+
+## Roadmap — tất cả DONE ✅
+- **Phase 1:** 2 service + Azure Service Bus pub/sub + emulator.
+- **Phase 2:** PostgreSQL (EF Core + Dapper), DDD + Clean Architecture, **Outbox**, JWT, **gRPC**, **Event Grid + Kafka** (IEventBus), Redis.
+- **Phase 3:** GitHub Actions CI + xUnit tests + Kubernetes manifests (AKS) + Application Insights.
+- **Bonus:** React frontend. **Verified end-to-end** qua `docker compose`.

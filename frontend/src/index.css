@@ -1,0 +1,67 @@
+:root {
+  --bg: #0a0e1a;
+  --surface: #121829;
+  --surface2: #1a2236;
+  --border: #26304a;
+  --text: #e6ebf5;
+  --text-dim: #93a0bd;
+  --accent: #3b82f6;
+  --accent2: #22c55e;
+  --danger: #ef4444;
+  --amber: #f59e0b;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); min-height: 100vh; }
+a { color: inherit; text-decoration: none; }
+
+.app-shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+.sidebar { background: #080c16; border-right: 1px solid var(--border); padding: 1.2rem 0.9rem; display: flex; flex-direction: column; }
+.brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 800; font-size: 1.05rem; padding: 0 0.4rem 1.2rem; }
+.brand-badge { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+.nav a { display: block; padding: 0.6rem 0.8rem; border-radius: 8px; color: var(--text-dim); font-size: 0.9rem; margin-bottom: 3px; }
+.nav a:hover { background: var(--surface2); color: var(--text); }
+.nav a.active { background: rgba(59,130,246,0.15); color: #fff; }
+.sidebar-foot { margin-top: auto; font-size: 0.75rem; color: var(--text-dim); padding: 0.6rem 0.4rem; }
+
+.main { padding: 1.6rem 2rem; }
+.topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.4rem; }
+.topbar h1 { font-size: 1.4rem; font-weight: 700; }
+.topbar .sub { color: var(--text-dim); font-size: 0.85rem; margin-top: 2px; }
+.user-chip { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; color: var(--text-dim); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.3rem; }
+.grid { display: grid; gap: 1.1rem; }
+.grid-3 { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+
+.acct-card { position: relative; overflow: hidden; }
+.acct-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+.acct-num { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--text-dim); letter-spacing: 0.05em; }
+.acct-balance { font-size: 1.8rem; font-weight: 800; margin: 0.5rem 0 0.2rem; }
+.acct-ccy { font-size: 0.8rem; color: var(--text-dim); }
+
+.section-title { font-size: 0.95rem; font-weight: 700; margin: 1.8rem 0 0.9rem; color: var(--text); }
+
+label { display: block; font-size: 0.78rem; color: var(--text-dim); margin-bottom: 0.3rem; }
+input, select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.7rem; color: var(--text); font-size: 0.9rem; }
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.9rem; margin-bottom: 1rem; }
+
+.btn { display: inline-flex; align-items: center; gap: 0.4rem; border: none; border-radius: 8px; padding: 0.6rem 1.1rem; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #2563eb; }
+.btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--accent); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.alert { border-radius: 8px; padding: 0.7rem 0.9rem; font-size: 0.85rem; margin: 0.8rem 0; }
+.alert-error { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.35); color: #fca5a5; }
+.alert-ok { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.35); color: #86efac; }
+
+.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.login-card { width: 380px; }
+.login-card h1 { font-size: 1.3rem; margin-bottom: 0.3rem; }
+.login-card p { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.3rem; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.muted { color: var(--text-dim); font-size: 0.82rem; }

@@ -25,12 +25,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret)),
     });
 builder.Services.AddAuthorization();
+builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
+    p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));   // FE React gọi cross-origin
 
 // Application Insights — chỉ bật khi có connection string (không ảnh hưởng local/dev).
 if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
     builder.Services.AddApplicationInsightsTelemetry();
 
 var app = builder.Build();
+app.UseCors();
 
 using (var scope = app.Services.CreateScope())
 {
