@@ -54,6 +54,14 @@ public static class SchemaInitializer
             is_active     BOOLEAN      NOT NULL DEFAULT TRUE
         );
 
+        -- Inbox: message nào đã xử lý rồi. PRIMARY KEY chính là cơ chế chống trùng —
+        -- ghi cùng transaction với transfer nên không có khe hở giữa "đã chi tiền" và "đã đánh dấu".
+        -- Thiếu bảng này thì broker giao lại message = chi tiền bồi thường lần nữa.
+        CREATE TABLE IF NOT EXISTS processed_messages (
+            message_id   VARCHAR(200) PRIMARY KEY,
+            processed_at TIMESTAMPTZ  NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_outbox_pending
             ON outbox (created_at) WHERE status = 'PENDING';
         """;

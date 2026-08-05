@@ -108,20 +108,36 @@ public sealed class ClaimPayoutConsumer(
                 var transfer = Transfer.Initiate(
                     insurer.Value.PayoutFromAccount, e.PayoutAccount, e.Amount, e.Currency);
 
-                await repo.SaveWithOutboxAsync(transfer, new MoneyTransferredIntegrationEvent
-                {
-                    TransferId  = transfer.Id,
-                    FromAccount = transfer.FromAccount,
-                    ToAccount   = transfer.ToAccount,
-                    Amount      = transfer.Amount,
-                    Currency    = transfer.Currency,
-                }, args.CancellationToken);
+                // Transfer + lệnh ghi sổ + báo kết quả saga + dấu inbox — TẤT CẢ trong một transaction.
+                var applied = await repo.SaveWithOutboxAsync(
+                    transfer,
+                    [
+                        new MoneyTransferredIntegrationEvent
+                        {
+                            TransferId  = transfer.Id,
+                            FromAccount = transfer.FromAccount,
+                            ToAccount   = transfer.ToAccount,
+                            Amount      = transfer.Amount,
+                            Currency    = transfer.Currency,
+                        },
+                        new ClaimPayoutCompletedIntegrationEvent
+                        {
+                            ClaimId    = e.ClaimId,
+                            TransferId = transfer.Id,
+                        },
+                    ],
+                    args.Message.MessageId,
+                    args.CancellationToken);
 
-                await bus.PublishAsync(new ClaimPayoutCompletedIntegrationEvent
+                if (!applied)
                 {
-                    ClaimId = e.ClaimId,
-                    TransferId = transfer.Id,
-                }, args.CancellationToken);
+                    // Message được giao lại — lần trước đã chi rồi. Complete và đi tiếp.
+                    logger.LogInformation(
+                        "Bỏ qua {MessageId}: hồ sơ {ClaimNumber} đã được chi trả trước đó",
+                        args.Message.MessageId, e.ClaimNumber);
+                    await args.CompleteMessageAsync(args.Message);
+                    return;
+                }
 
                 logger.LogInformation(
                     "Chi trả bồi thường {ClaimNumber}: {Amount} {Currency} → {Account} (transfer {TransferId})",
@@ -160,20 +176,33 @@ public sealed class ClaimPayoutConsumer(
             var transfer = Transfer.Initiate(
                 e.DebitAccount, insurer.Value.PayoutFromAccount, e.Amount, e.Currency);
 
-            await repo.SaveWithOutboxAsync(transfer, new MoneyTransferredIntegrationEvent
-            {
-                TransferId  = transfer.Id,
-                FromAccount = transfer.FromAccount,
-                ToAccount   = transfer.ToAccount,
-                Amount      = transfer.Amount,
-                Currency    = transfer.Currency,
-            }, args.CancellationToken);
+            var applied = await repo.SaveWithOutboxAsync(
+                transfer,
+                [
+                    new MoneyTransferredIntegrationEvent
+                    {
+                        TransferId  = transfer.Id,
+                        FromAccount = transfer.FromAccount,
+                        ToAccount   = transfer.ToAccount,
+                        Amount      = transfer.Amount,
+                        Currency    = transfer.Currency,
+                    },
+                    new PremiumCollectedIntegrationEvent
+                    {
+                        PolicyId   = e.PolicyId,
+                        TransferId = transfer.Id,
+                    },
+                ],
+                args.Message.MessageId,
+                args.CancellationToken);
 
-            await bus.PublishAsync(new PremiumCollectedIntegrationEvent
+            if (!applied)
             {
-                PolicyId = e.PolicyId,
-                TransferId = transfer.Id,
-            }, args.CancellationToken);
+                logger.LogInformation(
+                    "Bỏ qua {MessageId}: phí hợp đồng {PolicyNumber} đã thu trước đó",
+                    args.Message.MessageId, e.PolicyNumber);
+                return;
+            }
 
             logger.LogInformation("Thu phí {PolicyNumber}: {Amount} {Currency} từ {Account}",
                 e.PolicyNumber, e.Amount, e.Currency, e.DebitAccount);

@@ -33,9 +33,15 @@ Mỗi feature PHẢI map về 1 dòng JD (xem bảng §2 trong CLAUDE.md). KHÔN
    (`PersistenceConventions.Apply()`) vì Npgsql trả `DateTime` cho `timestamptz`.
 
 ## Reliability — BẮT BUỘC khi thêm consumer/lệnh mới
-- **Inbox/dedup:** check `IInboxStore.AlreadyProcessedAsync(messageId)` trước khi áp side-effect;
-  `MarkProcessed` commit **cùng transaction** với thay đổi dữ liệu. Broker chỉ at-least-once →
-  không có inbox = trừ tiền 2 lần. KHÔNG được chỉ "tin" MessageId của broker.
+- **Inbox/dedup — BẮT BUỘC ở MỌI service có side-effect** (Accounts VÀ Payments, không chỉ một bên):
+  dấu inbox commit **cùng transaction** với thay đổi dữ liệu. Broker chỉ at-least-once →
+  thiếu inbox = trừ/chi tiền 2 lần. KHÔNG chỉ "tin" MessageId của broker.
+  Dùng `INSERT ... ON CONFLICT DO NOTHING` + đếm dòng (PRIMARY KEY quyết định), KHÔNG "SELECT rồi INSERT".
+  ⚠️ Consumer nào gọi `Transfer.Initiate()`/tạo entity mới mỗi lần nhận message = CHẮC CHẮN thiếu inbox.
+- **Event kết quả saga đi qua outbox cùng transaction**, không `bus.PublishAsync` rời ngoài tx —
+  crash giữa 2 bước = tiền đã chuyển mà bên kia không bao giờ biết (hồ sơ kẹt vĩnh viễn).
+- **docker-compose:** mọi datastore phải có `healthcheck` + `depends_on: condition: service_healthy`
+  và **named volume** (không có volume = `down` mất sạch dữ liệu demo).
 - **Optimistic concurrency:** entity bị sửa song song phải có `RowVersion`; retry `DbUpdateConcurrencyException`.
 - **Phân loại lỗi:** nghiệp vụ (permanent) → phát compensating event + Complete message (đừng retry vô ích);
   hạ tầng (transient) → Abandon để broker giao lại; payload hỏng → DeadLetter thẳng.
@@ -131,7 +137,7 @@ Branch flow (giống allinone/D-Pro): `namdaoint` (dev chính, default) → `dev
 - **Contract:** `SchemaVersion` trong mọi event + cột `outbox.schema_version`; consumer dead-letter version lạ.
 - **Nghiệp vụ:** double-entry ledger + sao kê · Policy (miễn thường/đồng chi trả/thời gian chờ) ·
   Claim → saga chi trả sang ngân hàng · bancassurance thu phí.
-- **Tests:** **64 unit** + **8 integration** (Testcontainers: Postgres + SQL Server thật, auto-skip nếu thiếu Docker).
+- **Tests:** **64 unit** + **10 integration** (Testcontainers: Postgres + SQL Server thật, auto-skip nếu thiếu Docker).
 - **Ops:** Docker Compose (kèm SB emulator) · 11 k8s manifest + HPA · CI reference · App Insights (conditional).
 - **Bonus:** React FE (port 5174) · `docs/ARCHITECTURE.md` + `docs/MONOLITH-TO-MICROSERVICES.md`.
 - **Verified end-to-end** qua `docker compose`: transfer, saga chi trả claim, rate-limit 429, schema_version.

@@ -132,4 +132,76 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
         await txA.RollbackAsync();
         await txB.RollbackAsync();
     }
+
+    /// <summary>
+    /// Hồi quy cho lỗi chi tiền hai lần.
+    ///
+    /// Service Bus chỉ bảo đảm at-least-once: cùng một `ClaimApproved` có thể được giao lại
+    /// (Complete lỗi, lease hết hạn, service restart giữa chừng). Trước khi có inbox,
+    /// `ClaimPayoutConsumer` gọi `Transfer.Initiate()` mỗi lần nhận ⇒ mỗi lần giao lại là một lệnh
+    /// chi tiền mới cho cùng một hồ sơ bồi thường.
+    ///
+    /// Test dùng **cùng messageId, khác Transfer** — đúng như lúc chạy thật, vì consumer sinh
+    /// Transfer mới mỗi lần. Chốt chặn phải là PRIMARY KEY của bảng inbox, không phải trùng Transfer.Id.
+    /// </summary>
+    [SkippableFact]
+    public async Task SaveWithOutbox_RedeliveredMessage_ShouldNotPayTwice()
+    {
+        Skip.IfNot(DockerAvailability.IsAvailable, DockerAvailability.SkipReason);
+
+        var repo = new DapperTransferRepository(_dataSource);
+        const string messageId = "claim-approved-msg-1";
+
+        var first = Transfer.Initiate("INS-FUND", "ACC-900", 7_200_000m, "VND");
+        var appliedFirst = await repo.SaveWithOutboxAsync(first, [EventFor(first)], messageId);
+
+        // Broker giao lại: consumer sinh Transfer HOÀN TOÀN MỚI, chỉ messageId là trùng.
+        var duplicate = Transfer.Initiate("INS-FUND", "ACC-900", 7_200_000m, "VND");
+        var appliedSecond = await repo.SaveWithOutboxAsync(duplicate, [EventFor(duplicate)], messageId);
+
+        Assert.True(appliedFirst);
+        Assert.False(appliedSecond);
+
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        Assert.Equal(1, await conn.ExecuteScalarAsync<int>(
+            "SELECT count(*) FROM transfers WHERE to_account = 'ACC-900'"));
+        Assert.Equal(0, await conn.ExecuteScalarAsync<int>(
+            "SELECT count(*) FROM transfers WHERE id = @Id", new { duplicate.Id }));
+        // Lệnh chi thứ hai không được lọt vào outbox, nếu không Accounts vẫn ghi nợ lần nữa.
+        Assert.Equal(1, await conn.ExecuteScalarAsync<int>(
+            "SELECT count(*) FROM outbox WHERE payload->>'ToAccount' = 'ACC-900'"));
+    }
+
+    /// <summary>
+    /// Transfer + mọi outbox event + dấu inbox phải nằm trong CÙNG một transaction.
+    /// Nếu sự kiện báo kết quả saga (`ClaimPayoutCompleted`) publish riêng bên ngoài, crash vào đúng
+    /// khe giữa hai bước sẽ chuyển tiền xong mà bên bảo hiểm không bao giờ biết ⇒ hồ sơ kẹt ở Approved.
+    /// </summary>
+    [SkippableFact]
+    public async Task SaveWithOutbox_ShouldWriteAllEvents_Atomically()
+    {
+        Skip.IfNot(DockerAvailability.IsAvailable, DockerAvailability.SkipReason);
+
+        var repo = new DapperTransferRepository(_dataSource);
+        var transfer = Transfer.Initiate("INS-FUND", "ACC-901", 5_000_000m, "VND");
+        var claimId = Guid.NewGuid();
+
+        var applied = await repo.SaveWithOutboxAsync(
+            transfer,
+            [
+                EventFor(transfer),
+                new ClaimPayoutCompletedIntegrationEvent { ClaimId = claimId, TransferId = transfer.Id },
+            ],
+            "claim-approved-msg-2");
+
+        Assert.True(applied);
+
+        await using var conn = await _dataSource.OpenConnectionAsync();
+        var types = (await conn.QueryAsync<string>(
+            "SELECT event_type FROM outbox WHERE payload->>'TransferId' = @Id",
+            new { Id = transfer.Id.ToString() })).ToList();
+
+        Assert.Contains(nameof(MoneyTransferredIntegrationEvent), types);
+        Assert.Contains(nameof(ClaimPayoutCompletedIntegrationEvent), types);
+    }
 }

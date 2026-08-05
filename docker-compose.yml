@@ -11,6 +11,16 @@ services:
       MSSQL_SA_PASSWORD: "Str0ng!Passw0rd"
     ports:
       - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    # Container "started" ≠ database "sẵn sàng nhận truy vấn". Không có healthcheck thì
+    # depends_on chỉ chờ tiến trình khởi động, service phía trên nối vào là gặp lỗi.
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   postgres:
     image: postgres:17
@@ -21,7 +31,14 @@ services:
     ports:
       - "5433:5432"   # host 5433 để tránh đụng D-Pro (deploy-postgres-1:5432)
     volumes:
+      - postgres-data:/var/lib/postgresql/data
       - ./deploy/init-insurance-db.sql:/docker-entrypoint-initdb.d/10-insurance.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d payments"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
 
   kafka:
     image: confluentinc/cp-kafka:7.7.0
@@ -42,16 +59,32 @@ services:
       CLUSTER_ID: "banking-kafka-cluster"
     ports:
       - "9094:9092"   # host 9094 tránh đụng Kafka của D-Pro (9092)
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   redis:
     image: redis:7-alpine
     ports:
       - "6380:6379"   # host 6380 để tránh đụng D-Pro (deploy-redis-1:6379)
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
   servicebus-emulator:
     image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
     depends_on:
-      - mssql
+      mssql:
+        condition: service_healthy
     environment:
       ACCEPT_EULA: "Y"
       SQL_SERVER: mssql
@@ -66,10 +99,14 @@ services:
       context: .
       dockerfile: src/Payments/Payments.Api/Dockerfile
     depends_on:
-      - servicebus-emulator
-      - postgres
-      - accounts-api
-      - kafka
+      servicebus-emulator:
+        condition: service_started    # emulator không expose healthcheck; app đã có retry riêng
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      accounts-api:
+        condition: service_started
     environment:
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=payments;Username=postgres;Password=postgres"
       Grpc__AccountsUrl: "http://accounts-api:8090"
@@ -89,10 +126,14 @@ services:
       context: .
       dockerfile: src/Accounts/Accounts.Api/Dockerfile
     depends_on:
-      - servicebus-emulator
-      - mssql
-      - redis
-      - kafka
+      servicebus-emulator:
+        condition: service_started
+      mssql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
       ConnectionStrings__SqlServer: "Server=mssql,1433;Database=accounts;User Id=sa;Password=Str0ng!Passw0rd;TrustServerCertificate=true;"
       ConnectionStrings__Redis: "redis:6379"
@@ -110,9 +151,12 @@ services:
       context: .
       dockerfile: src/Insurance/Insurance.Api/Dockerfile
     depends_on:
-      - servicebus-emulator
-      - postgres
-      - redis
+      servicebus-emulator:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=insurance;Username=postgres;Password=postgres"
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
@@ -121,3 +165,11 @@ services:
       ConnectionStrings__Redis: "redis:6379"
     ports:
       - "8083:8080"
+
+# Named volume: không có thì `docker compose down` xoá sạch tài khoản, sổ cái, hợp đồng —
+# mỗi lần restart lại phải dựng dữ liệu demo từ đầu. Xoá hẳn khi cần: `docker compose down -v`.
+volumes:
+  mssql-data:
+  postgres-data:
+  kafka-data:
+  redis-data:
