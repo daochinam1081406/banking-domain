@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Insurance.Infrastructure.Migrations
 {
     [DbContext(typeof(InsuranceDbContext))]
-    [Migration("20260805082849_InitialInsurance")]
+    [Migration("20260805084432_InitialInsurance")]
     partial class InitialInsurance
     {
         /// <inheritdoc />
@@ -34,6 +34,9 @@ namespace Insurance.Infrastructure.Migrations
                     b.Property<decimal?>("ApprovedAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("AssessedCost")
+                        .HasColumnType("numeric");
 
                     b.Property<string>("ClaimNumber")
                         .IsRequired()
@@ -118,6 +121,9 @@ namespace Insurance.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal>("CoPaymentRate")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal>("CoverageAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -126,6 +132,9 @@ namespace Insurance.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
+
+                    b.Property<decimal>("Deductible")
+                        .HasColumnType("numeric");
 
                     b.Property<DateOnly>("EffectiveFrom")
                         .HasColumnType("date");
@@ -152,6 +161,9 @@ namespace Insurance.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<Guid?>("PremiumTransferId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("ProductCode")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -164,6 +176,9 @@ namespace Insurance.Infrastructure.Migrations
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("WaitingPeriodDays")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

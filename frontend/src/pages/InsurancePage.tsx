@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import {
-  activatePolicy, approveClaim, issuePolicy, listClaims, listPolicies, rejectClaim, submitClaim,
+  payPremium, approveClaim, issuePolicy, listClaims, listPolicies, rejectClaim, submitClaim,
   type Claim, type Policy,
 } from '../api/insurance'
 import { ApiError } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
 
 const money = (n: number, ccy: string) => `${n.toLocaleString('vi-VN')} ${ccy}`
 const today = () => new Date().toISOString().slice(0, 10)
@@ -18,6 +19,7 @@ const CLAIM_LABEL: Record<Claim['status'], string> = {
 }
 
 export function InsurancePage() {
+  const { isAdjuster } = useAuth()
   const [policies, setPolicies] = useState<Policy[]>([])
   const [claims, setClaims] = useState<Claim[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -114,9 +116,10 @@ export function InsurancePage() {
               {p.status === 'Draft' && (
                 <button
                   className="btn btn-primary" style={{ padding: '4px 10px', fontSize: '0.78rem' }}
-                  onClick={() => void act(() => activatePolicy(p.policyNumber),
-                    'Đã đóng phí — hợp đồng có hiệu lực.', 'Kích hoạt thất bại.')}
-                >Đóng phí</button>
+                  onClick={() => void act(() => payPremium(p.policyNumber, p.payoutAccount),
+                    'Đang trích nợ phí từ tài khoản ngân hàng… (hợp đồng sẽ Active khi thu đủ)',
+                    'Thu phí thất bại.')}
+                >Đóng phí qua NH</button>
               )}
             </div>
             <div className="muted" style={{ fontSize: '0.72rem', marginTop: '0.5rem' }}>
@@ -164,7 +167,7 @@ export function InsurancePage() {
       </form>
 
       <div className="section-title">
-        Hồ sơ bồi thường <span className="muted">— duyệt sẽ tự chi trả về tài khoản ngân hàng (saga)</span>
+        {isAdjuster ? 'Hàng chờ giám định' : 'Hồ sơ bồi thường của tôi'} <span className="muted">— duyệt sẽ tự chi trả về tài khoản ngân hàng (saga)</span>
       </div>
       <div className="card">
         {claims.length === 0 ? (
@@ -201,7 +204,10 @@ export function InsurancePage() {
                     )}
                   </td>
                   <td>
-                    {(c.status === 'Submitted' || c.status === 'UnderReview') && (
+                    {!isAdjuster && (c.status === 'Submitted' || c.status === 'UnderReview') && (
+                      <span className="muted" style={{ fontSize: '0.75rem' }}>Chờ giám định</span>
+                    )}
+                    {isAdjuster && (c.status === 'Submitted' || c.status === 'UnderReview') && (
                       <div style={{ display: 'flex', gap: '0.4rem' }}>
                         <button
                           className="btn btn-primary" style={{ padding: '4px 10px', fontSize: '0.76rem' }}

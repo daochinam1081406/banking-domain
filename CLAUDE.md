@@ -35,7 +35,9 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | Event-driven architecture | ✅ | integration events qua broker + Outbox |
 | RESTful API + **gRPC** | ✅ P2 | Minimal API + gRPC AccountCheck (Payments→Accounts sync) |
 | Clean Architecture + DDD | ✅ P2 | Domain/Application/Infra/Api, aggregate |
-| OAuth2 / OIDC / JWT | ✅ P2+ | JWT bearer + **refresh token rotation & reuse detection** (`/auth/login\|refresh\|logout`), chỉ lưu SHA-256 hash |
+| OAuth2 / OIDC / JWT | ✅ P2+ | **Login username/password thật** (PBKDF2-SHA256 600k) + role claim + refresh rotation & reuse detection |
+| **Phân quyền (RBAC)** | ✅ | `customer` vs `adjuster` — chỉ giám định viên duyệt/từ chối claim (segregation of duties) |
+| **Bancassurance** | ✅ | Thu phí trích nợ tài khoản NH (bank→insurer) + chi trả bồi thường (insurer→bank) |
 | Observability | ✅ | **Correlation ID** xuyên HTTP→gRPC→outbox→message→consumer · Serilog structured · OpenTelemetry tracing |
 | Resilience | ✅ | Polly `AddStandardResilienceHandler` trên gRPC client (retry + circuit breaker + timeout) |
 | Docker | ✅ | Dockerfile + compose |

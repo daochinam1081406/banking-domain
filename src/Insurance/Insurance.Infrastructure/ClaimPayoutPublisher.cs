@@ -9,4 +9,7 @@ public sealed class ClaimPayoutPublisher(IEventBus bus) : IClaimPayoutPublisher
 {
     public Task PublishApprovedAsync(ClaimApprovedIntegrationEvent @event, CancellationToken ct = default)
         => bus.PublishAsync(@event, ct);
+
+    public Task PublishPremiumDueAsync(PremiumDueIntegrationEvent @event, CancellationToken ct = default)
+        => bus.PublishAsync(@event, ct);
 }

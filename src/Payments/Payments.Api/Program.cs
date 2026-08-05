@@ -45,6 +45,15 @@ using (var scope = app.Services.CreateScope())
 {
     var dataSource = scope.ServiceProvider.GetRequiredService<NpgsqlDataSource>();
     await SchemaInitializer.EnsureCreatedAsync(dataSource);
+
+    // Tài khoản demo — mật khẩu hash PBKDF2, KHÔNG lưu plaintext.
+    var users = scope.ServiceProvider.GetRequiredService<IUserStore>();
+    await users.EnsureSeededAsync(
+    [
+        User.Create("demo",     "Demo@123",     Roles.Customer, "Nguyễn Văn Demo"),
+        User.Create("alice",    "Alice@123",    Roles.Customer, "Trần Thị Alice"),
+        User.Create("adjuster", "Adjuster@123", Roles.Adjuster, "Giám định viên Bảo Việt"),
+    ]);
 }
 
 app.UseAuthentication();
@@ -54,8 +63,8 @@ app.MapGet("/", () => "Payments.Api — POST /api/transfers");
 app.MapHealthChecks("/health");   // probe Postgres thật
 
 // ── Auth: access token ngắn hạn + refresh token rotation (production: thay bằng IdP OAuth2/OIDC) ──
-app.MapPost("/auth/login", async (TokenRequest req, TokenService tokens, CancellationToken ct) =>
-    Results.Ok(await tokens.LoginAsync(req.Subject ?? "demo-user", req.Role ?? "customer", ct)));
+app.MapPost("/auth/login", async (LoginRequest req, TokenService tokens, CancellationToken ct) =>
+    Results.Ok(await tokens.LoginAsync(req.Username, req.Password, ct)));
 
 app.MapPost("/auth/refresh", async (RefreshRequest req, TokenService tokens, CancellationToken ct) =>
     Results.Ok(await tokens.RefreshAsync(req.RefreshToken, ct)));
@@ -66,9 +75,12 @@ app.MapPost("/auth/logout", async (RefreshRequest req, TokenService tokens, Canc
     return Results.NoContent();
 });
 
-// Alias cũ — giữ để README/script hiện có không gãy.
-app.MapPost("/token", (TokenRequest req, JwtOptions opt) =>
-    Results.Ok(new { token = JwtTokenFactory.Issue(opt, req.Subject ?? "demo-user", req.Role ?? "customer") }));
+// Ai đang đăng nhập (FE dùng để biết role → ẩn/hiện chức năng giám định)
+app.MapGet("/auth/me", (ClaimsPrincipal user) => Results.Ok(new
+{
+    username = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value,
+    role = user.FindFirst(ClaimTypes.Role)?.Value ?? user.FindFirst("role")?.Value,
+})).RequireAuthorization();
 
 app.MapPost("/api/transfers", async (
     InitiateTransferCommand cmd, ClaimsPrincipal user,
@@ -95,5 +107,5 @@ app.MapGet("/api/transfers/{id:guid}", async (Guid id, ITransferReadService read
 
 app.Run();
 
-public sealed record TokenRequest(string? Subject, string? Role);
+public sealed record LoginRequest(string Username, string Password);
 public sealed record RefreshRequest(string RefreshToken);

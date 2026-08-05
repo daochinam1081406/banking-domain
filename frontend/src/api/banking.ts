@@ -14,13 +14,17 @@ export type Transfer = {
   currency: string; status: string; createdAt: string
 }
 
-// Auth (Payments /token phát JWT — dùng chung secret nên token dùng được cả 2 service)
-export function login(subject: string, role = 'customer') {
-  return paymentsApi<{ token: string }>('/token', {
+// Auth — xác thực username/password thật (PBKDF2), trả access + refresh token
+export type TokenPair = { accessToken: string; refreshToken: string; expiresInSeconds: number }
+
+export function login(username: string, password: string) {
+  return paymentsApi<TokenPair>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ subject, role }),
+    body: JSON.stringify({ username, password }),
   })
 }
+
+export const me = () => paymentsApi<{ username: string; role: string }>('/auth/me')
 
 // Accounts
 export const listAccounts = () => accountsApi<Account[]>('/api/accounts')

@@ -50,12 +50,24 @@ public sealed class InsuranceService(
         return new PolicyIssuedResult(policy.Id, policy.PolicyNumber, policy.Status.ToString());
     }
 
-    /// <summary>Đóng phí → hợp đồng có hiệu lực (thực tế sẽ đối soát thanh toán trước).</summary>
-    public async Task ActivatePolicyAsync(string policyNumber, string holderId, CancellationToken ct = default)
+    /// <summary>
+    /// Bancassurance: yêu cầu **trích nợ phí** từ tài khoản ngân hàng của khách.
+    /// Hợp đồng CHƯA Active ngay — chỉ Active khi Payments báo đã thu được tiền (saga).
+    /// </summary>
+    public async Task RequestPremiumCollectionAsync(
+        string policyNumber, string holderId, string debitAccount, CancellationToken ct = default)
     {
         var policy = await LoadOwnedPolicyAsync(policyNumber, holderId, ct);
-        policy.Activate();
-        await policies.SaveChangesAsync(ct);
+        policy.EnsurePendingPremium();
+
+        await payouts.PublishPremiumDueAsync(new PremiumDueIntegrationEvent
+        {
+            PolicyId     = policy.Id,
+            PolicyNumber = policy.PolicyNumber,
+            DebitAccount = string.IsNullOrWhiteSpace(debitAccount) ? policy.PayoutAccount : debitAccount.Trim().ToUpperInvariant(),
+            Amount       = policy.PremiumAmount,
+            Currency     = policy.Currency,
+        }, ct);
     }
 
     public async Task<ClaimSubmittedResult> SubmitClaimAsync(SubmitClaimCommand cmd, CancellationToken ct = default)
@@ -117,4 +129,5 @@ public sealed record ClaimSubmittedResult(Guid ClaimId, string ClaimNumber, stri
 public interface IClaimPayoutPublisher
 {
     Task PublishApprovedAsync(ClaimApprovedIntegrationEvent @event, CancellationToken ct = default);
+    Task PublishPremiumDueAsync(PremiumDueIntegrationEvent @event, CancellationToken ct = default);
 }

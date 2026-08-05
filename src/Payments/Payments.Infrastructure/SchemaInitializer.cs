@@ -43,6 +43,16 @@ public static class SchemaInitializer
         );
         CREATE INDEX IF NOT EXISTS idx_refresh_family ON refresh_tokens (family_id);
 
+        -- Tài khoản đăng nhập: PBKDF2 hash + salt, có role (customer / adjuster)
+        CREATE TABLE IF NOT EXISTS users (
+            username      VARCHAR(50)  PRIMARY KEY,
+            password_hash VARCHAR(200) NOT NULL,
+            salt          VARCHAR(100) NOT NULL,
+            role          VARCHAR(30)  NOT NULL,
+            display_name  VARCHAR(100) NOT NULL,
+            is_active     BOOLEAN      NOT NULL DEFAULT TRUE
+        );
+
         CREATE INDEX IF NOT EXISTS idx_outbox_pending
             ON outbox (created_at) WHERE status = 'PENDING';
         """;

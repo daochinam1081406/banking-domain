@@ -2,7 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
 export function AppShell() {
-  const { user, signOut } = useAuth()
+  const { user, role, signOut } = useAuth()
   return (
     <div className="app-shell">
       <nav className="sidebar">
@@ -26,7 +26,7 @@ export function AppShell() {
             <div className="sub">Insurance · Accounts (SQL Server) · Payments (PostgreSQL) · Outbox → Service Bus</div>
           </div>
           <div className="user-chip">
-            <span>👤 {user}</span>
+            <span>👤 {user} <span className={role === 'adjuster' ? 'tag-warn' : 'tag-info'}>{role === 'adjuster' ? 'Giám định viên' : 'Khách hàng'}</span></span>
             <button className="btn btn-ghost" onClick={signOut}>Đăng xuất</button>
           </div>
         </div>

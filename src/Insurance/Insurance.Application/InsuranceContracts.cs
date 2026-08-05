@@ -8,7 +8,7 @@ public sealed record PolicyDto(
 
 public sealed record ClaimDto(
     Guid Id, string ClaimNumber, string PolicyNumber, string ClaimantId,
-    decimal RequestedAmount, decimal? ApprovedAmount, string Currency,
+    decimal RequestedAmount, decimal? AssessedCost, decimal? ApprovedAmount, string Currency,
     DateOnly IncidentDate, string Description, string Status,
     string? ReviewerId, string? DecisionReason, Guid? PayoutTransferId, DateTimeOffset CreatedAt);
 
@@ -17,6 +17,8 @@ public interface IInsuranceReadService
     Task<IReadOnlyList<PolicyDto>> ListPoliciesAsync(string holderId, CancellationToken ct = default);
     Task<PolicyDto?> GetPolicyAsync(string policyNumber, CancellationToken ct = default);
     Task<IReadOnlyList<ClaimDto>> ListClaimsAsync(string claimantId, CancellationToken ct = default);
+    /// <summary>Hàng chờ của giám định viên — toàn bộ hồ sơ.</summary>
+    Task<IReadOnlyList<ClaimDto>> ListAllClaimsAsync(CancellationToken ct = default);
     Task<ClaimDto?> GetClaimAsync(Guid claimId, CancellationToken ct = default);
 }
 

@@ -3,14 +3,15 @@ import { insuranceApi } from './client'
 export type Policy = {
   id: string; policyNumber: string; policyHolderId: string; productCode: string
   coverageAmount: number; claimedAmount: number; remainingCoverage: number
-  premiumAmount: number; currency: string; payoutAccount: string
+  premiumAmount: number; deductible: number; coPaymentRate: number; waitingPeriodDays: number
+  currency: string; payoutAccount: string
   status: 'Draft' | 'Active' | 'Lapsed' | 'Cancelled'
   effectiveFrom: string; effectiveTo: string
 }
 
 export type Claim = {
   id: string; claimNumber: string; policyNumber: string; claimantId: string
-  requestedAmount: number; approvedAmount: number | null; currency: string
+  requestedAmount: number; assessedCost: number | null; approvedAmount: number | null; currency: string
   incidentDate: string; description: string
   status: 'Submitted' | 'UnderReview' | 'Approved' | 'Rejected' | 'Paid'
   reviewerId: string | null; decisionReason: string | null
@@ -27,8 +28,11 @@ export const issuePolicy = (input: {
   method: 'POST', body: JSON.stringify(input),
 })
 
-export const activatePolicy = (policyNumber: string) =>
-  insuranceApi<void>(`/api/policies/${encodeURIComponent(policyNumber)}/activate`, { method: 'POST' })
+// Bancassurance: trích nợ phí từ tài khoản ngân hàng (hợp đồng Active khi thu đủ — saga)
+export const payPremium = (policyNumber: string, debitAccount: string) =>
+  insuranceApi<{ policyNumber: string; status: string }>(
+    `/api/policies/${encodeURIComponent(policyNumber)}/pay-premium`,
+    { method: 'POST', body: JSON.stringify({ debitAccount }) })
 
 // Bồi thường
 export const listClaims = () => insuranceApi<Claim[]>('/api/claims')

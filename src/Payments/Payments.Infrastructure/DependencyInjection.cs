@@ -30,6 +30,7 @@ public static class DependencyInjection
 
         services.AddScoped<ITransferStatusWriter, DapperTransferStatusWriter>();
         services.AddScoped<IRefreshTokenStore, DapperRefreshTokenStore>();
+        services.AddScoped<IUserStore, DapperUserStore>();
         services.AddScoped<TokenService>();
 
         services.AddEventBus(config);                          // IEventBus: ServiceBus | EventGrid | Kafka

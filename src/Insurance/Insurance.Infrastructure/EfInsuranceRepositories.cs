@@ -46,6 +46,11 @@ public sealed class EfInsuranceReadService(InsuranceDbContext db) : IInsuranceRe
             .OrderByDescending(c => c.CreatedAt)
             .Select(c => MapClaim(c)).ToListAsync(ct);
 
+    public async Task<IReadOnlyList<ClaimDto>> ListAllClaimsAsync(CancellationToken ct = default)
+        => await db.Claims.AsNoTracking()
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => MapClaim(c)).ToListAsync(ct);
+
     public async Task<ClaimDto?> GetClaimAsync(Guid claimId, CancellationToken ct = default)
         => await db.Claims.AsNoTracking().Where(c => c.Id == claimId).Select(c => MapClaim(c)).FirstOrDefaultAsync(ct);
 
@@ -57,7 +62,7 @@ public sealed class EfInsuranceReadService(InsuranceDbContext db) : IInsuranceRe
 
     private static ClaimDto MapClaim(Claim c) => new(
         c.Id, c.ClaimNumber, c.PolicyNumber, c.ClaimantId,
-        c.RequestedAmount, c.ApprovedAmount, c.Currency,
+        c.RequestedAmount, c.AssessedCost, c.ApprovedAmount, c.Currency,
         c.IncidentDate, c.Description, c.Status.ToString(),
         c.ReviewerId, c.DecisionReason, c.PayoutTransferId, c.CreatedAt);
 }

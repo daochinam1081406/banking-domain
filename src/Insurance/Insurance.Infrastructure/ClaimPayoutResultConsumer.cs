@@ -53,6 +53,7 @@ public sealed class ClaimPayoutResultConsumer(
         {
             await using var scope = scopeFactory.CreateAsyncScope();
             var claims = scope.ServiceProvider.GetRequiredService<IClaimRepository>();
+            var policies = scope.ServiceProvider.GetRequiredService<IPolicyRepository>();
             var body = args.Message.Body.ToString();
 
             switch (args.Message.Subject)
@@ -67,6 +68,25 @@ public sealed class ClaimPayoutResultConsumer(
                         await claims.SaveChangesAsync(args.CancellationToken);
                         logger.LogInformation("Claim {ClaimId} → Paid (transfer {TransferId})", e.ClaimId, e.TransferId);
                     }
+                    break;
+                }
+                case nameof(PremiumCollectedIntegrationEvent):
+                {
+                    var e = JsonSerializer.Deserialize<PremiumCollectedIntegrationEvent>(body)!;
+                    var policy = await policies.GetByIdAsync(e.PolicyId, args.CancellationToken);
+                    if (policy is not null)
+                    {
+                        policy.MarkPremiumCollected(e.TransferId);   // idempotent
+                        await policies.SaveChangesAsync(args.CancellationToken);
+                        logger.LogInformation("Đã thu phí hợp đồng {PolicyId} → Active", e.PolicyId);
+                    }
+                    break;
+                }
+                case nameof(PremiumCollectionFailedIntegrationEvent):
+                {
+                    var e = JsonSerializer.Deserialize<PremiumCollectionFailedIntegrationEvent>(body)!;
+                    logger.LogWarning("Thu phí hợp đồng {PolicyId} thất bại: {Reason} — giữ Draft",
+                        e.PolicyId, e.Reason);
                     break;
                 }
                 case nameof(ClaimPayoutFailedIntegrationEvent):

@@ -13,7 +13,7 @@ public class InsuranceTests
     {
         var p = Policy.Issue("POL-2026-000001", "alice", "HEALTH", coverage, 2_000_000m,
             "ACC-001", From, To);
-        p.Activate();
+        p.MarkPremiumCollected(Guid.NewGuid());   // thu phí xong mới Active
         return p;
     }
 
@@ -132,5 +132,95 @@ public class InsuranceTests
         Assert.Equal(ClaimStatus.Rejected, c.Status);
         Assert.Equal(0m, p.ClaimedAmount);            // hạn mức không bị trừ
         Assert.Equal(10_000_000m, p.RemainingCoverage);
+    }
+}
+
+/// <summary>Công thức chi trả thật của ngành: miễn thường · đồng chi trả · thời gian chờ.</summary>
+public class InsurancePayoutRulesTests
+{
+    private static readonly DateOnly From = new(2026, 1, 1);
+    private static readonly DateOnly To = new(2026, 12, 31);
+
+    private static Policy Policy_(decimal coverage = 100_000_000m, decimal deductible = 0,
+        decimal copay = 0, int waiting = 0)
+    {
+        var p = Policy.Issue("POL-1", "alice", "HEALTH", coverage, 2_000_000m, "ACC-001",
+            From, To, "VND", deductible, copay, waiting);
+        p.MarkPremiumCollected(Guid.NewGuid());
+        return p;
+    }
+
+    [Fact]
+    public void Payable_ShouldSubtractDeductible_ThenApplyCoPay()
+    {
+        // Viện phí 10tr, miễn thường 1tr, đồng chi trả 20% → BH trả (10−1)×0.8 = 7,2tr
+        var p = Policy_(deductible: 1_000_000m, copay: 0.2m);
+        Assert.Equal(7_200_000m, p.CalculatePayable(10_000_000m));
+    }
+
+    [Fact]
+    public void Payable_CostBelowDeductible_ShouldBeZero()
+    {
+        var p = Policy_(deductible: 1_000_000m);
+        Assert.Equal(0m, p.CalculatePayable(800_000m));   // dưới mức miễn thường → KH tự chịu
+    }
+
+    [Fact]
+    public void Payable_ShouldBeCappedByRemainingCoverage()
+    {
+        var p = Policy_(coverage: 5_000_000m);
+        Assert.Equal(5_000_000m, p.CalculatePayable(9_000_000m));
+    }
+
+    [Fact]
+    public void Approve_ShouldConsumeCoverage_ByPayableNotAssessedCost()
+    {
+        var p = Policy_(coverage: 100_000_000m, deductible: 1_000_000m, copay: 0.2m);
+        var c = Claim.Submit("CLM-1", p, "alice", 10_000_000m, new DateOnly(2026, 6, 1), "Nằm viện");
+
+        c.Approve("adjuster", 10_000_000m, p);
+
+        Assert.Equal(10_000_000m, c.AssessedCost);      // chi phí công nhận
+        Assert.Equal(7_200_000m, c.ApprovedAmount);     // BH thực trả
+        Assert.Equal(7_200_000m, p.ClaimedAmount);      // hạn mức trừ theo số thực trả
+    }
+
+    [Fact]
+    public void Approve_NothingPayableAfterDeductible_ShouldThrow()
+    {
+        var p = Policy_(deductible: 5_000_000m);
+        var c = Claim.Submit("CLM-1", p, "alice", 3_000_000m, new DateOnly(2026, 6, 1), "Sự cố nhỏ");
+
+        var ex = Assert.Throws<InsuranceDomainException>(() => c.Approve("adjuster", 3_000_000m, p));
+        Assert.Equal("NOTHING_PAYABLE", ex.ErrorCode);
+    }
+
+    [Fact]
+    public void WaitingPeriod_IncidentTooEarly_ShouldThrow()
+    {
+        var p = Policy_(waiting: 30);   // 30 ngày chờ với bệnh thông thường
+        var ex = Assert.Throws<InsuranceDomainException>(
+            () => p.EnsureClaimable(1_000_000m, From.AddDays(10)));
+        Assert.Equal("WITHIN_WAITING_PERIOD", ex.ErrorCode);
+    }
+
+    [Fact]
+    public void WaitingPeriod_AfterElapsed_ShouldBeClaimable()
+    {
+        var p = Policy_(waiting: 30);
+        p.EnsureClaimable(1_000_000m, From.AddDays(31));   // không ném lỗi
+    }
+
+    [Fact]
+    public void PolicyOnlyActive_AfterPremiumCollected()
+    {
+        var p = Policy.Issue("POL-9", "alice", "HEALTH", 10_000_000m, 500_000m, "ACC-001", From, To);
+        Assert.Equal(PolicyStatus.Draft, p.Status);       // chưa thu phí → chưa hiệu lực
+
+        p.MarkPremiumCollected(Guid.NewGuid());
+        Assert.Equal(PolicyStatus.Active, p.Status);
+
+        p.MarkPremiumCollected(Guid.NewGuid());           // idempotent
+        Assert.Equal(PolicyStatus.Active, p.Status);
     }
 }

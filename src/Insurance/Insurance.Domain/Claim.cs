@@ -23,7 +23,8 @@ public sealed class Claim
     public string PolicyNumber { get; private set; } = null!;
     public string ClaimantId { get; private set; } = null!;
     public decimal RequestedAmount { get; private set; }
-    public decimal? ApprovedAmount { get; private set; }
+    public decimal? AssessedCost { get; private set; }      // chi phí GĐV công nhận
+    public decimal? ApprovedAmount { get; private set; }    // số BH thực chi trả
     public string Currency { get; private set; } = "VND";
     public DateOnly IncidentDate { get; private set; }
     public string Description { get; private set; } = null!;
@@ -73,19 +74,28 @@ public sealed class Claim
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
-    /// <summary>Duyệt (có thể duyệt thấp hơn số yêu cầu — thực tế giám định hay cắt giảm).</summary>
-    public void Approve(string reviewerId, decimal approvedAmount, Policy policy)
+    /// <summary>
+    /// Giám định duyệt: `assessedCost` là chi phí được công nhận (≤ số yêu cầu, GĐV hay cắt giảm).
+    /// Số **thực chi trả** do hợp đồng quyết định qua miễn thường + đồng chi trả + hạn mức còn lại.
+    /// </summary>
+    public void Approve(string reviewerId, decimal assessedCost, Policy policy)
     {
         EnsureStatus(ClaimStatus.Submitted, ClaimStatus.UnderReview);
-        if (approvedAmount <= 0)
-            throw new InsuranceDomainException("Số tiền duyệt phải > 0.", "AMOUNT_INVALID");
-        if (approvedAmount > RequestedAmount)
+        if (assessedCost <= 0)
+            throw new InsuranceDomainException("Chi phí được duyệt phải > 0.", "AMOUNT_INVALID");
+        if (assessedCost > RequestedAmount)
             throw new InsuranceDomainException(
                 "Không thể duyệt cao hơn số yêu cầu.", "APPROVED_EXCEEDS_REQUESTED");
 
-        policy.ConsumeCoverage(approvedAmount);   // trừ hạn mức hợp đồng
+        var payable = policy.CalculatePayable(assessedCost);
+        if (payable <= 0)
+            throw new InsuranceDomainException(
+                "Sau miễn thường/đồng chi trả, số tiền chi trả bằng 0.", "NOTHING_PAYABLE");
 
-        ApprovedAmount = approvedAmount;
+        policy.ConsumeCoverage(payable);   // trừ hạn mức theo số THỰC TRẢ
+
+        AssessedCost = assessedCost;
+        ApprovedAmount = payable;
         ReviewerId = reviewerId.Trim();
         Status = ClaimStatus.Approved;
         UpdatedAt = DateTimeOffset.UtcNow;

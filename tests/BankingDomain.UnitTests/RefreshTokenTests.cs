@@ -4,6 +4,14 @@ using Xunit;
 
 namespace BankingDomain.UnitTests;
 
+internal sealed class InMemoryUserStore(params User[] users) : IUserStore
+{
+    private readonly Dictionary<string, User> _users = users.ToDictionary(u => u.Username);
+    public Task<User?> FindAsync(string username, CancellationToken ct = default)
+        => Task.FromResult(_users.GetValueOrDefault(username.Trim().ToLowerInvariant()));
+    public Task EnsureSeededAsync(IEnumerable<User> seed, CancellationToken ct = default) => Task.CompletedTask;
+}
+
 internal sealed class InMemoryRefreshTokenStore : IRefreshTokenStore
 {
     private readonly Dictionary<string, RefreshToken> _tokens = [];
@@ -34,14 +42,15 @@ public class RefreshTokenTests
     {
         var store = new InMemoryRefreshTokenStore();
         var jwt = new JwtOptions { Secret = new string('k', 48), ExpiryMinutes = 30 };
-        return (new TokenService(jwt, store, NullLogger<TokenService>.Instance), store);
+        var users = new InMemoryUserStore(User.Create("alice", "Alice@123", Roles.Customer, "Alice"));
+        return (new TokenService(jwt, store, users, NullLogger<TokenService>.Instance), store);
     }
 
     [Fact]
     public async Task Login_ShouldIssueAccessAndRefreshToken()
     {
         var (svc, _) = Build();
-        var pair = await svc.LoginAsync("alice");
+        var pair = await svc.LoginAsync("alice", "Alice@123");
 
         Assert.False(string.IsNullOrWhiteSpace(pair.AccessToken));
         Assert.False(string.IsNullOrWhiteSpace(pair.RefreshToken));
@@ -52,7 +61,7 @@ public class RefreshTokenTests
     public async Task Refresh_ShouldRotate_OldTokenNoLongerUsable()
     {
         var (svc, _) = Build();
-        var first = await svc.LoginAsync("alice");
+        var first = await svc.LoginAsync("alice", "Alice@123");
 
         var second = await svc.RefreshAsync(first.RefreshToken);
         Assert.NotEqual(first.RefreshToken, second.RefreshToken);   // rotation
@@ -65,7 +74,7 @@ public class RefreshTokenTests
     public async Task Reuse_ShouldRevokeWholeFamily()
     {
         var (svc, store) = Build();
-        var first = await svc.LoginAsync("alice");
+        var first = await svc.LoginAsync("alice", "Alice@123");
         var second = await svc.RefreshAsync(first.RefreshToken);
 
         Assert.Equal(1, store.ActiveCount);   // chỉ token mới còn sống
@@ -88,7 +97,7 @@ public class RefreshTokenTests
     public async Task Logout_ShouldRevokeFamily()
     {
         var (svc, store) = Build();
-        var pair = await svc.LoginAsync("alice");
+        var pair = await svc.LoginAsync("alice", "Alice@123");
 
         await svc.LogoutAsync(pair.RefreshToken);
 

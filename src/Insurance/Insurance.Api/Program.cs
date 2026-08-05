@@ -26,7 +26,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         ValidAudience = jwt.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret)),
     });
-builder.Services.AddAuthorization();
+// Tách quyền: chỉ giám định viên mới được duyệt/từ chối hồ sơ (segregation of duties —
+// khách hàng KHÔNG được tự duyệt hồ sơ của chính mình).
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("adjuster-only", p => p.RequireRole(Roles.Adjuster));
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
     p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
@@ -75,23 +78,30 @@ app.MapPost("/api/policies", async (
     return Results.Created($"/api/policies/{r.PolicyNumber}", r);
 }).RequireAuthorization();
 
-// Đóng phí → hợp đồng có hiệu lực
-app.MapPost("/api/policies/{policyNumber}/activate", async (
-    string policyNumber, ClaimsPrincipal user, InsuranceService svc, CancellationToken ct) =>
+// Đóng phí (bancassurance): trích nợ tài khoản ngân hàng → hợp đồng Active khi thu được tiền
+app.MapPost("/api/policies/{policyNumber}/pay-premium", async (
+    string policyNumber, PayPremiumRequest? req, ClaimsPrincipal user,
+    InsuranceService svc, CancellationToken ct) =>
 {
-    await svc.ActivatePolicyAsync(policyNumber, user.Subject(), ct);
-    return Results.NoContent();
+    await svc.RequestPremiumCollectionAsync(policyNumber, user.Subject(), req?.DebitAccount ?? "", ct);
+    return Results.Accepted($"/api/policies/{policyNumber}",
+        new { policyNumber, status = "PremiumCollecting" });
 }).RequireAuthorization();
 
 // ── Yêu cầu bồi thường ───────────────────────────────────────────
+// Khách chỉ thấy hồ sơ của mình; giám định viên thấy toàn bộ hàng chờ xử lý.
 app.MapGet("/api/claims", async (ClaimsPrincipal user, IInsuranceReadService reads, CancellationToken ct) =>
-    Results.Ok(await reads.ListClaimsAsync(user.Subject(), ct))).RequireAuthorization();
+    Results.Ok(user.IsInRole(Roles.Adjuster)
+        ? await reads.ListAllClaimsAsync(ct)
+        : await reads.ListClaimsAsync(user.Subject(), ct))).RequireAuthorization();
 
 app.MapGet("/api/claims/{id:guid}", async (
     Guid id, ClaimsPrincipal user, IInsuranceReadService reads, CancellationToken ct) =>
 {
     var dto = await reads.GetClaimAsync(id, ct);
-    return dto is null || dto.ClaimantId != user.Subject() ? Results.NotFound() : Results.Ok(dto);
+    if (dto is null) return Results.NotFound();
+    return dto.ClaimantId == user.Subject() || user.IsInRole(Roles.Adjuster)
+        ? Results.Ok(dto) : Results.NotFound();
 }).RequireAuthorization();
 
 app.MapPost("/api/claims", async (
@@ -107,18 +117,19 @@ app.MapPost("/api/claims/{id:guid}/approve", async (
 {
     await svc.ApproveClaimAsync(new ApproveClaimCommand(id, req.ApprovedAmount) { ReviewerId = user.Subject() }, ct);
     return Results.Accepted($"/api/claims/{id}", new { claimId = id, status = "Approved", payout = "processing" });
-}).RequireAuthorization();
+}).RequireAuthorization("adjuster-only");
 
 app.MapPost("/api/claims/{id:guid}/reject", async (
     Guid id, RejectClaimRequest req, ClaimsPrincipal user, InsuranceService svc, CancellationToken ct) =>
 {
     await svc.RejectClaimAsync(new RejectClaimCommand(id, req.Reason) { ReviewerId = user.Subject() }, ct);
     return Results.NoContent();
-}).RequireAuthorization();
+}).RequireAuthorization("adjuster-only");
 
 app.Run();
 
 public sealed record ApproveClaimRequest(decimal ApprovedAmount);
+public sealed record PayPremiumRequest(string? DebitAccount);
 public sealed record RejectClaimRequest(string Reason);
 
 internal static class ClaimsPrincipalExtensions

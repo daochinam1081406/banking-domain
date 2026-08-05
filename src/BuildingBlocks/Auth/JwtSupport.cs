@@ -24,7 +24,9 @@ public static class JwtTokenFactory
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, subject),
+            new Claim(ClaimTypes.NameIdentifier, subject),
             new Claim(ClaimTypes.Role, role),
+            new Claim("role", role),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(opt.Secret));

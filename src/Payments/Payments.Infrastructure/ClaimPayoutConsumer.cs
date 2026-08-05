@@ -60,7 +60,8 @@ public sealed class ClaimPayoutConsumer(
 
     private async Task OnMessageAsync(ProcessMessageEventArgs args)
     {
-        if (args.Message.Subject != nameof(ClaimApprovedIntegrationEvent))
+        var subject = args.Message.Subject;
+        if (subject != nameof(ClaimApprovedIntegrationEvent) && subject != nameof(PremiumDueIntegrationEvent))
         {
             await args.CompleteMessageAsync(args.Message);
             return;
@@ -74,11 +75,18 @@ public sealed class ClaimPayoutConsumer(
 
         try
         {
-            var e = JsonSerializer.Deserialize<ClaimApprovedIntegrationEvent>(args.Message.Body.ToString())!;
             await using var scope = scopeFactory.CreateAsyncScope();
             var repo = scope.ServiceProvider.GetRequiredService<ITransferRepository>();
             var bus = scope.ServiceProvider.GetRequiredService<IEventBus>();
 
+            if (subject == nameof(PremiumDueIntegrationEvent))
+            {
+                await CollectPremiumAsync(args, repo, bus);
+                await args.CompleteMessageAsync(args.Message);
+                return;
+            }
+
+            var e = JsonSerializer.Deserialize<ClaimApprovedIntegrationEvent>(args.Message.Body.ToString())!;
             try
             {
                 // Chi trả: quỹ bảo hiểm → tài khoản khách. Dùng chính luồng Outbox của Payments.
@@ -121,6 +129,48 @@ public sealed class ClaimPayoutConsumer(
         {
             logger.LogError(ex, "Xử lý ClaimApproved {MessageId} lỗi hạ tầng — abandon", args.Message.MessageId);
             await args.AbandonMessageAsync(args.Message);
+        }
+    }
+
+    /// <summary>
+    /// Bancassurance — thu phí: trích nợ tài khoản khách → quỹ bảo hiểm. Không đủ số dư thì
+    /// báo thất bại để hợp đồng giữ nguyên Draft (không cho hiệu lực khi chưa có tiền).
+    /// </summary>
+    private async Task CollectPremiumAsync(
+        ProcessMessageEventArgs args, ITransferRepository repo, IEventBus bus)
+    {
+        var e = JsonSerializer.Deserialize<PremiumDueIntegrationEvent>(args.Message.Body.ToString())!;
+        try
+        {
+            var transfer = Transfer.Initiate(
+                e.DebitAccount, insurer.Value.PayoutFromAccount, e.Amount, e.Currency);
+
+            await repo.SaveWithOutboxAsync(transfer, new MoneyTransferredIntegrationEvent
+            {
+                TransferId  = transfer.Id,
+                FromAccount = transfer.FromAccount,
+                ToAccount   = transfer.ToAccount,
+                Amount      = transfer.Amount,
+                Currency    = transfer.Currency,
+            }, args.CancellationToken);
+
+            await bus.PublishAsync(new PremiumCollectedIntegrationEvent
+            {
+                PolicyId = e.PolicyId,
+                TransferId = transfer.Id,
+            }, args.CancellationToken);
+
+            logger.LogInformation("Thu phí {PolicyNumber}: {Amount} {Currency} từ {Account}",
+                e.PolicyNumber, e.Amount, e.Currency, e.DebitAccount);
+        }
+        catch (PaymentsDomainException ex)
+        {
+            await bus.PublishAsync(new PremiumCollectionFailedIntegrationEvent
+            {
+                PolicyId = e.PolicyId,
+                Reason = ex.Message,
+            }, args.CancellationToken);
+            logger.LogWarning("Thu phí {PolicyNumber} thất bại: {Reason}", e.PolicyNumber, ex.Message);
         }
     }
 

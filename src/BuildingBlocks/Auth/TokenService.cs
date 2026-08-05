@@ -14,6 +14,11 @@ public sealed class InvalidRefreshTokenException(string message) : Exception(mes
     public string ErrorCode => "REFRESH_TOKEN_INVALID";
 }
 
+public sealed class InvalidCredentialsException(string message) : Exception(message)
+{
+    public string ErrorCode => "INVALID_CREDENTIALS";
+}
+
 /// <summary>
 /// Cấp + xoay refresh token.
 /// - `LoginAsync` mở family mới.
@@ -24,14 +29,25 @@ public sealed class InvalidRefreshTokenException(string message) : Exception(mes
 public sealed class TokenService(
     JwtOptions jwtOptions,
     IRefreshTokenStore store,
+    IUserStore users,
     ILogger<TokenService> logger)
 {
-    public async Task<TokenPair> LoginAsync(string subject, string role = "customer", CancellationToken ct = default)
+    /// <summary>Xác thực username/password thật (PBKDF2) rồi mới cấp token.</summary>
+    public async Task<TokenPair> LoginAsync(string username, string password, CancellationToken ct = default)
     {
-        var (entity, raw) = RefreshToken.Issue(subject, RefreshToken.NewFamilyId());
+        var user = await users.FindAsync(username, ct);
+
+        // Cùng một thông báo cho "sai user" và "sai mật khẩu" — không tiết lộ user nào tồn tại.
+        if (user is null || !user.IsActive || !user.VerifyPassword(password))
+        {
+            logger.LogWarning("Đăng nhập thất bại cho {Username}", username);
+            throw new InvalidCredentialsException("Tên đăng nhập hoặc mật khẩu không đúng.");
+        }
+
+        var (entity, raw) = RefreshToken.Issue(user.Username, RefreshToken.NewFamilyId());
         await store.AddAsync(entity, ct);
         await store.SaveChangesAsync(ct);
-        return Pair(subject, role, raw);
+        return Pair(user.Username, user.Role, raw);
     }
 
     public async Task<TokenPair> RefreshAsync(string rawRefreshToken, CancellationToken ct = default)
@@ -58,7 +74,9 @@ public sealed class TokenService(
         await store.AddAsync(entity, ct);
         await store.SaveChangesAsync(ct);
 
-        return Pair(existing.Subject, "customer", raw);
+        // Role lấy lại từ user store — tránh token cũ giữ role đã bị thu hồi.
+        var user = await users.FindAsync(existing.Subject, ct);
+        return Pair(existing.Subject, user?.Role ?? Roles.Customer, raw);
     }
 
     public async Task LogoutAsync(string rawRefreshToken, CancellationToken ct = default)
