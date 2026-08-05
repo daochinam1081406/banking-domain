@@ -7,15 +7,14 @@ using Payments.Infrastructure;
 using Testcontainers.PostgreSql;
 using Xunit;
 
-
 namespace BankingDomain.IntegrationTests;
 
 /// <summary>
-/// Chạy trên **PostgreSQL thật** (Testcontainers). Những lỗi dưới đây unit test KHÔNG bắt được vì
+/// Chạy trên PostgreSQL thật (Testcontainers). Những lỗi dưới đây unit test KHÔNG bắt được vì
 /// chúng chỉ lộ khi có driver + kiểu dữ liệu thật:
-///  • Npgsql trả `DateTime` cho `timestamptz` ⇒ Dapper không match ctor record dùng `DateTimeOffset`
-///  • Outbox + transfer phải commit CÙNG transaction
-///  • `FOR UPDATE SKIP LOCKED` để publisher an toàn multi-instance
+///  - Npgsql trả `DateTime` cho `timestamptz` ⇒ Dapper không match ctor record dùng `DateTimeOffset`
+///  - Outbox + transfer phải commit CÙNG transaction
+///  - `FOR UPDATE SKIP LOCKED` để publisher an toàn multi-instance
 /// </summary>
 public sealed class PostgresPersistenceTests : IAsyncLifetime
 {
@@ -65,7 +64,7 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
             "SELECT COUNT(*) FROM outbox WHERE status = 'PENDING'"));
     }
 
-    /// <summary>Hồi quy: DTO có DateTimeOffset đọc từ timestamptz — từng gây 500 trên môi trường thật.</summary>
+    /// <summary>DTO dùng DateTimeOffset đọc từ timestamptz — sai type handler là Dapper không dựng được record.</summary>
     [SkippableFact]
     public async Task ReadTransfer_ShouldMapDateTimeOffset_FromTimestamptz()
     {
@@ -134,15 +133,9 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Hồi quy cho lỗi chi tiền hai lần.
-    ///
-    /// Service Bus chỉ bảo đảm at-least-once: cùng một `ClaimApproved` có thể được giao lại
-    /// (Complete lỗi, lease hết hạn, service restart giữa chừng). Trước khi có inbox,
-    /// `ClaimPayoutConsumer` gọi `Transfer.Initiate()` mỗi lần nhận ⇒ mỗi lần giao lại là một lệnh
-    /// chi tiền mới cho cùng một hồ sơ bồi thường.
-    ///
-    /// Test dùng **cùng messageId, khác Transfer** — đúng như lúc chạy thật, vì consumer sinh
-    /// Transfer mới mỗi lần. Chốt chặn phải là PRIMARY KEY của bảng inbox, không phải trùng Transfer.Id.
+    /// Message giao lại không được chi tiền lần hai. Dùng cùng messageId nhưng Transfer khác nhau,
+    /// đúng như consumer thật (mỗi lần nhận là một Transfer mới) — chốt chặn phải là khoá chính
+    /// của bảng inbox, không phải trùng Transfer.Id.
     /// </summary>
     [SkippableFact]
     public async Task SaveWithOutbox_RedeliveredMessage_ShouldNotPayTwice()
@@ -173,9 +166,8 @@ public sealed class PostgresPersistenceTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Transfer + mọi outbox event + dấu inbox phải nằm trong CÙNG một transaction.
-    /// Nếu sự kiện báo kết quả saga (`ClaimPayoutCompleted`) publish riêng bên ngoài, crash vào đúng
-    /// khe giữa hai bước sẽ chuyển tiền xong mà bên bảo hiểm không bao giờ biết ⇒ hồ sơ kẹt ở Approved.
+    /// Event báo kết quả saga phải nằm cùng transaction với transfer; publish riêng bên ngoài thì
+    /// crash giữa hai bước sẽ chuyển tiền xong mà hồ sơ kẹt ở Approved.
     /// </summary>
     [SkippableFact]
     public async Task SaveWithOutbox_ShouldWriteAllEvents_Atomically()

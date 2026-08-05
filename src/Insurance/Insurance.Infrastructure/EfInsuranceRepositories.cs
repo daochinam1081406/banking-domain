@@ -50,10 +50,7 @@ public sealed class EfInsuranceReadService(InsuranceDbContext db) : IInsuranceRe
             .Take(limit)
             .Select(c => MapClaim(c)).ToListAsync(ct);
 
-    /// <summary>
-    /// Điều kiện `Status IN (Submitted, UnderReview)` PHẢI khớp đúng filter của partial index
-    /// `IX_claims_PendingQueue`, nếu lệch thì Postgres không dùng được index và quay về Seq Scan.
-    /// </summary>
+    /// <summary>Điều kiện lọc phải khớp đúng filter của partial index IX_claims_PendingQueue.</summary>
     public async Task<IReadOnlyList<ClaimDto>> ListPendingClaimsAsync(
         int limit = QueryLimits.DefaultPageSize, CancellationToken ct = default)
         => await db.Claims.AsNoTracking()

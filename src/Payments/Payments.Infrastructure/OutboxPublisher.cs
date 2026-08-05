@@ -8,17 +8,12 @@ using Npgsql;
 namespace Payments.Infrastructure;
 
 /// <summary>
-/// Poll outbox → publish lên Service Bus qua IEventBus → mark PUBLISHED.
-/// FOR UPDATE SKIP LOCKED → an toàn multi-instance. Đảm bảo at-least-once: nếu publish xong mà
-/// crash trước khi update, message được publish lại (consumer idempotent theo MessageId).
+/// Poll outbox → publish lên broker → mark PUBLISHED. <c>FOR UPDATE SKIP LOCKED</c> cho phép
+/// chạy nhiều instance. At-least-once: crash sau khi publish nhưng trước khi update thì message
+/// được gửi lại, consumer khử trùng theo MessageId.
 ///
-/// **Nhịp đẩy phải theo kịp nhịp ghi.** Bản đầu dùng `LIMIT 20` + ngủ cố định 1 giây ⇒ trần cứng
-/// 20 event/giây, trong khi API nhận ~364 lệnh/giây (đo bằng load test). Chênh ~18 lần nghĩa là
-/// dưới tải thật hàng đợi phình vô hạn và saga chậm dần không giới hạn — outbox vẫn "đúng" nhưng
-/// vô dụng vì độ trễ không chặn được.
-///
-/// Sửa: (1) batch lớn hơn; (2) **drain mode** — hút được đầy batch thì lặp lại NGAY, chỉ ngủ khi
-/// hàng đợi cạn, nên nhịp đẩy tự co giãn theo tải thay vì bị khoá bởi hằng số.
+/// Hút đầy batch thì lặp lại ngay, chỉ ngủ khi hàng đợi cạn — nhịp đẩy co giãn theo tải thay vì
+/// bị chặn bởi chu kỳ poll cố định (nhịp đẩy chậm hơn nhịp ghi = hàng đợi phình không giới hạn).
 /// </summary>
 public sealed class OutboxPublisher(
     NpgsqlDataSource dataSource,
@@ -45,7 +40,7 @@ public sealed class OutboxPublisher(
         }
     }
 
-    /// <returns>Số event đã đẩy trong vòng này — dùng để quyết định có hút tiếp ngay hay không.</returns>
+    /// <returns>Số event đã đẩy — quyết định có hút tiếp ngay hay không.</returns>
     private async Task<int> PublishPendingAsync(CancellationToken ct)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
@@ -68,8 +63,8 @@ public sealed class OutboxPublisher(
             return 0;
         }
 
-        // Correlation đi kèm TỪNG message thay vì đặt vào AsyncLocal trước mỗi lần gửi —
-        // gửi theo lô thì không còn "message đang xử lý" duy nhất để gắn context vào.
+        // Correlation đi kèm từng message: gửi theo lô thì không còn một "message đang xử lý"
+        // duy nhất để gắn vào AsyncLocal.
         var batch = rows
             .Select(r => new OutboxMessage(
                 r.EventType, r.Payload, r.Id.ToString(), r.CorrelationId, r.SchemaVersion ?? 1))
@@ -79,21 +74,18 @@ public sealed class OutboxPublisher(
         await eventBus.PublishBatchAsync(batch, ct);
         swBus.Stop();
 
-        // Song song: đẩy sang Kafka làm event stream (audit/analytics, replay được).
-        // Service Bus lo giao dịch/saga; Kafka lo streaming — hai vai trò khác nhau.
+        // Kafka là kênh stream song song (audit/analytics, replay được), không thay Service Bus.
         var swStream = System.Diagnostics.Stopwatch.StartNew();
         await eventStream.PublishBatchAsync(batch, ct);
         swStream.Stop();
 
-        // Một UPDATE cho cả batch thay vì mỗi dòng một lệnh — batch 200 thì tiết kiệm 199 vòng
-        // round-trip tới DB. Ngữ nghĩa không đổi: trước đây các UPDATE cũng chỉ commit ở cuối tx.
+        // Một UPDATE cho cả lô: batch 200 thì bớt 199 round-trip tới DB.
         await conn.ExecuteAsync(new CommandDefinition(
             "UPDATE outbox SET status = 'PUBLISHED', published_at = NOW() WHERE id = ANY(@Ids)",
             new { Ids = rows.Select(r => r.Id).ToArray() }, tx, cancellationToken: ct));
 
         await tx.CommitAsync(ct);
-        // Tách riêng thời gian từng kênh: khi outbox chậm, cần biết ngay nghẽn ở broker nào
-        // thay vì phải đoán từ dấu thời gian của log.
+        // Tách thời gian từng kênh để biết ngay nghẽn ở broker nào khi outbox chậm.
         logger.LogInformation(
             "Outbox published {Count} event(s) — ServiceBus {BusMs}ms · Kafka {StreamMs}ms",
             rows.Count, swBus.ElapsedMilliseconds, swStream.ElapsedMilliseconds);

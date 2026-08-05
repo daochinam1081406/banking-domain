@@ -9,7 +9,7 @@ namespace BuildingBlocks.State;
 
 /// <summary>
 /// Bắt header <c>Idempotency-Key</c> trên các request thay đổi dữ liệu (POST).
-/// Lần đầu: xử lý và **cache lại response**. Lần sau cùng key: trả thẳng response cũ (kèm
+/// Lần đầu: xử lý và cache lại response. Lần sau cùng key: trả thẳng response cũ (kèm
 /// <c>Idempotency-Replayed: true</c>) — không tạo giao dịch trùng.
 /// Đang xử lý dở mà có request thứ hai → 409, tránh double-spend do double-click.
 /// </summary>

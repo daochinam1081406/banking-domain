@@ -15,18 +15,17 @@ export function AppShell() {
           <NavLink to="/transfers">Chuyển tiền</NavLink>
           <NavLink to="/insurance">Bảo hiểm</NavLink>
         </div>
-        <div className="sidebar-foot">
-          .NET microservices · Azure Service Bus<br />Event-driven demo
-        </div>
       </nav>
       <main className="main">
         <div className="topbar">
-          <div>
-            <h1>Banking Console</h1>
-            <div className="sub">Insurance · Accounts (SQL Server) · Payments (PostgreSQL) · Outbox → Service Bus</div>
-          </div>
+          <h1>Banking Console</h1>
           <div className="user-chip">
-            <span>👤 {user} <span className={role === 'adjuster' ? 'tag-warn' : 'tag-info'}>{role === 'adjuster' ? 'Giám định viên' : 'Khách hàng'}</span></span>
+            <span>
+              {user}{' '}
+              <span className={role === 'adjuster' ? 'tag-warn' : 'tag-info'}>
+                {role === 'adjuster' ? 'Giám định viên' : 'Khách hàng'}
+              </span>
+            </span>
             <button className="btn btn-ghost" onClick={signOut}>Đăng xuất</button>
           </div>
         </div>

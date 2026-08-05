@@ -3,9 +3,9 @@ using StackExchange.Redis;
 namespace BuildingBlocks.State;
 
 /// <summary>
-/// **Idempotency-Key** — pattern chuẩn của API tài chính (Stripe/Adyen dùng y hệt).
+/// Idempotency-Key cho POST tạo giao dịch — client retry an toàn, không tạo lệnh trùng.
 /// Client retry (mất mạng, bấm 2 lần, gateway timeout) gửi lại cùng key ⇒ server KHÔNG tạo giao dịch
-/// thứ hai mà trả lại kết quả cũ. Redis giữ state này vì nó phải **dùng chung giữa nhiều instance**
+/// thứ hai mà trả lại kết quả cũ. Redis giữ state này vì nó phải dùng chung giữa nhiều instance
 /// (in-memory sẽ hỏng ngay khi scale ra 2 pod).
 /// </summary>
 public interface IIdempotencyStore

@@ -15,7 +15,7 @@ public sealed class AuditStreamConsumer(
     IOptions<KafkaOptions> options,
     ILogger<AuditStreamConsumer> logger) : KafkaConsumerBase(options, logger)
 {
-    protected override string ConsumerGroup => options.Value.ConsumerGroup;
+    protected override string ConsumerGroup => Options.ConsumerGroup;
 
     protected override async Task HandleAsync(
         string eventType, string payload, string? correlationId, CancellationToken ct)

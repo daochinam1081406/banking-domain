@@ -74,7 +74,7 @@ public sealed class InsuranceService(
     }
 
     /// <summary>
-    /// Bancassurance: yêu cầu **trích nợ phí** từ tài khoản ngân hàng của khách.
+    /// Bancassurance: yêu cầu trích nợ phí từ tài khoản ngân hàng của khách.
     /// Hợp đồng CHƯA Active ngay — chỉ Active khi Payments báo đã thu được tiền (saga).
     /// </summary>
     public async Task RequestPremiumCollectionAsync(
@@ -115,7 +115,7 @@ public sealed class InsuranceService(
         claim.Approve(cmd.ReviewerId, cmd.AssessedCost, policy);
         await claims.SaveChangesAsync(ct);   // claim + policy cùng DbContext → 1 transaction
 
-        // Saga: chi trả đúng **số thực trả** do hợp đồng tính (sau miễn thường + đồng chi trả),
+        // Saga: chi trả đúng số thực trả do hợp đồng tính (sau miễn thường + đồng chi trả),
         // KHÔNG phải chi phí giám định công nhận — nhầm chỗ này là chi thừa tiền cho khách.
         await payouts.PublishApprovedAsync(new ClaimApprovedIntegrationEvent
         {

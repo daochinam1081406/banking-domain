@@ -44,11 +44,9 @@ public sealed class InsuranceDbContext(DbContextOptions<InsuranceDbContext> opti
             e.Property(c => c.ReviewerId).HasMaxLength(100);
             e.Property(c => c.DecisionReason).HasMaxLength(500);
 
-            // Hàng đợi giám định: `WHERE Status IN (chờ xử lý) ORDER BY CreatedAt DESC LIMIT n`.
-            // Phải là **partial index** chứ không phải composite (Status, CreatedAt):
-            // trạng thái chờ chiếm ~40% bảng nên planner bỏ qua index thường và Seq Scan.
-            // Partial index chỉ chứa các dòng đang chờ và đã sẵn thứ tự CreatedAt DESC ⇒
-            // đọc thẳng n dòng đầu, không có node Sort. Đo trên 600k dòng: 461ms → 0.1ms.
+            // Hàng đợi giám định. Partial index chứ không phải composite (Status, CreatedAt):
+            // trạng thái chờ chiếm ~40% bảng nên planner bỏ qua index thường. Index này chỉ chứa
+            // dòng đang chờ và đã sẵn thứ tự CreatedAt DESC nên LIMIT đọc thẳng, không cần Sort.
             e.HasIndex(c => c.CreatedAt)
                 .HasDatabaseName("IX_claims_PendingQueue")
                 .HasFilter("\"Status\" IN ('Submitted','UnderReview')")

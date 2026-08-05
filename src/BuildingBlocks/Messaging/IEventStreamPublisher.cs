@@ -4,23 +4,15 @@ using Microsoft.Extensions.DependencyInjection;
 namespace BuildingBlocks.Messaging;
 
 /// <summary>
-/// Kênh **event streaming** (Kafka) — tách khỏi `IEventBus` (Azure Service Bus) một cách có chủ đích:
-///
-///  • **Service Bus** = messaging giao dịch: saga/command, cần DLQ, ordering theo session, at-least-once
-///    với retry/abandon rõ ràng. Message tiêu thụ xong là hết.
-///  • **Kafka** = luồng sự kiện để **stream/replay**: audit trail, analytics, feed sang data lake.
-///    Giữ theo retention nên service mới join vẫn đọc lại được lịch sử (không thể làm với Service Bus).
-///
-/// Đây đúng cách hệ thống thật dùng song song hai broker, không phải "chọn 1 trong 2".
+/// Kênh event streaming (Kafka), tách khỏi <see cref="IEventBus"/> (Service Bus) có chủ đích:
+/// Service Bus lo saga/command và tiêu thụ xong là hết; Kafka giữ theo retention nên audit,
+/// analytics và service mới join vẫn đọc lại được lịch sử.
 /// </summary>
 public interface IEventStreamPublisher
 {
     Task PublishAsync(string eventType, string jsonPayload, string key, CancellationToken ct = default);
 
-    /// <summary>
-    /// Đẩy cả lô. Mặc định lặp tuần tự; impl Kafka override để xếp hàng rồi Flush một lần
-    /// (librdkafka tự gộp thành ít request hơn) thay vì chờ delivery report của từng message.
-    /// </summary>
+    /// <summary>Mặc định lặp tuần tự; impl Kafka override để xếp hàng rồi Flush một lần.</summary>
     async Task PublishBatchAsync(IReadOnlyList<OutboxMessage> messages, CancellationToken ct = default)
     {
         foreach (var m in messages)
@@ -39,7 +31,7 @@ public sealed class NoOpEventStreamPublisher : IEventStreamPublisher
 
 public static class EventStreamExtensions
 {
-    /// <summary>Đăng ký stream Kafka; tắt (no-op) nếu không cấu hình để local vẫn chạy được.</summary>
+    /// <summary>No-op nếu chưa cấu hình Kafka, để chạy local không cần broker.</summary>
     public static IServiceCollection AddKafkaEventStream(
         this IServiceCollection services, IConfiguration config)
     {

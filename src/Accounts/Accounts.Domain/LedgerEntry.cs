@@ -7,7 +7,7 @@ public enum LedgerDirection
 }
 
 /// <summary>
-/// Bút toán kép (double-entry) — bản ghi **bất biến** của mọi biến động tiền.
+/// Bút toán kép (double-entry) — bản ghi bất biến của mọi biến động tiền.
 /// Mỗi lệnh chuyển tiền sinh đúng 2 entry (Debit bên gửi + Credit bên nhận) với cùng TransferId,
 /// nên tổng Debit luôn = tổng Credit → đối soát được, không "tạo tiền" từ không khí.
 /// Balance trên Account là giá trị chốt nhanh; ledger mới là nguồn sự thật để audit/sao kê.

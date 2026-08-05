@@ -4,7 +4,7 @@ using System.Text;
 namespace BuildingBlocks.Auth;
 
 /// <summary>
-/// Refresh token với **rotation** + **reuse detection** (chuẩn OWASP cho public client).
+/// Refresh token: rotation mỗi lần dùng + reuse detection (khuyến nghị OWASP cho public client).
 /// DB chỉ lưu SHA-256 hash — lộ DB không dùng lại được token.
 /// </summary>
 public sealed class RefreshToken

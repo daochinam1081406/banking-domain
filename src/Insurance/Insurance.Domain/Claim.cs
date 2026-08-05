@@ -12,7 +12,7 @@ public enum ClaimStatus
 }
 
 /// <summary>
-/// Yêu cầu bồi thường. Vòng đời: Submitted → UnderReview → Approved → **Paid** | Rejected.
+/// Yêu cầu bồi thường. Vòng đời: Submitted → UnderReview → Approved → Paid | Rejected.
 /// `Paid` không do người dùng bấm — do saga: Approved ⇒ Payments chi trả ⇒ báo về mới chuyển Paid.
 /// </summary>
 public sealed class Claim
@@ -76,7 +76,7 @@ public sealed class Claim
 
     /// <summary>
     /// Giám định duyệt: `assessedCost` là chi phí được công nhận (≤ số yêu cầu, GĐV hay cắt giảm).
-    /// Số **thực chi trả** do hợp đồng quyết định qua miễn thường + đồng chi trả + hạn mức còn lại.
+    /// Số thực chi trả do hợp đồng quyết định qua miễn thường + đồng chi trả + hạn mức còn lại.
     /// </summary>
     public void Approve(string reviewerId, decimal assessedCost, Policy policy)
     {

@@ -30,7 +30,7 @@ public static class AuthEndpoints
         }
         catch (TooManyLoginAttemptsException ex)
         {
-            // 429 + Retry-After để client biết chờ bao lâu (chuẩn HTTP).
+            // Retry-After cho client biết chờ bao lâu.
             ctx.Response.Headers.RetryAfter = ((int)ex.RetryAfter.TotalSeconds).ToString();
             return Results.Json(new { errorCode = ex.ErrorCode, detail = ex.Message },
                 statusCode: StatusCodes.Status429TooManyRequests);

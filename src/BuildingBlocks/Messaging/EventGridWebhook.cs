@@ -7,10 +7,10 @@ using Microsoft.Extensions.Logging;
 namespace BuildingBlocks.Messaging;
 
 /// <summary>
-/// Endpoint nhận event từ **Azure Event Grid**. Khác Service Bus/Kafka ở chỗ Event Grid là **push**:
+/// Endpoint nhận event từ Azure Event Grid. Khác Service Bus/Kafka ở chỗ Event Grid là push:
 /// Azure gọi HTTP vào webhook của mình, không phải mình pull.
 ///
-/// Bắt buộc xử lý **SubscriptionValidationEvent**: khi tạo subscription, Event Grid gửi 1 event đặc biệt
+/// Bắt buộc xử lý SubscriptionValidationEvent: khi tạo subscription, Event Grid gửi 1 event đặc biệt
 /// kèm `validationCode`, webhook phải echo lại `validationResponse` — không làm thì subscription không
 /// bao giờ active. Đây là chi tiết hay bị hỏi khi phỏng vấn về Event Grid.
 /// </summary>

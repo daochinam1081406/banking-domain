@@ -26,14 +26,14 @@ export function TransfersPage() {
     setBusy(true); setError(null); setOk(null)
     try {
       const r = await createTransfer({ fromAccount: from, toAccount: to, amount: Number(amount) })
-      setOk(`Đã ghi nhận transfer ${r.transferId.slice(0, 8)}… (${r.status}). Outbox → Service Bus → Accounts đang xử lý…`)
-      // Số dư cập nhật bất đồng bộ — chờ consumer rồi refresh
+      setOk(`Đã tiếp nhận lệnh chuyển tiền ${r.transferId.slice(0, 8).toUpperCase()}. Số dư sẽ cập nhật trong giây lát.`)
+      // Ghi sổ chạy bất đồng bộ ở service khác — chờ rồi mới đọc lại số dư.
       setTimeout(() => void refreshBalances(), 4000)
     } catch (err) {
       if (err instanceof ApiError && err.detail) {
         setError(`Thất bại: ${err.detail}`)
       } else {
-        setError('Chuyển tiền thất bại. Kiểm tra API Payments (8081).')
+        setError('Chuyển tiền thất bại. Vui lòng thử lại.')
       }
     } finally {
       setBusy(false)
@@ -44,8 +44,7 @@ export function TransfersPage() {
     <div>
       <div className="section-title" style={{ marginTop: 0 }}>Chuyển tiền</div>
       <p className="muted" style={{ marginBottom: '1rem' }}>
-        Payments validate số dư qua <b>gRPC</b> → ghi Transfer + <b>Outbox</b> (PostgreSQL) →
-        <b> Azure Service Bus</b> → Accounts consume cập nhật số dư (SQL Server). Số dư cập nhật <b>bất đồng bộ</b>.
+        Lệnh được ghi nhận ngay; số dư cập nhật sau khi hệ thống ghi sổ xong.
       </p>
 
       <form className="card" onSubmit={onSubmit}>

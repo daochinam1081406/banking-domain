@@ -49,9 +49,7 @@ public sealed class ClaimPayoutResultConsumer(
             [CorrelationContext.LogPropertyName] = CorrelationContext.Id ?? "-",
         });
 
-
-        // Contract versioning: schema lạ (do publisher đã nâng cấp trước) thì DỪNG, không đoán mò —
-        // đoán sai trên dữ liệu tiền bạc tệ hơn nhiều so với việc dead-letter và cảnh báo.
+        // Schema lạ (publisher đã nâng cấp trước) thì dead-letter, không đoán mò trên dữ liệu tiền tệ.
         var schemaVersion = args.Message.ApplicationProperties
             .TryGetValue(SchemaCompatibility.MessagePropertyName, out var sv) && sv is not null
                 ? Convert.ToInt32(sv) : 1;

@@ -9,7 +9,7 @@ public static class Roles
 }
 
 /// <summary>
-/// Tài khoản đăng nhập. Mật khẩu lưu **PBKDF2-SHA256 600k vòng** (khuyến nghị OWASP 2023+),
+/// Tài khoản đăng nhập. Mật khẩu lưu PBKDF2-SHA256 600k vòng (khuyến nghị OWASP 2023+),
 /// không bao giờ lưu plaintext. So sánh hash bằng hàm chống timing-attack.
 /// </summary>
 public sealed class User

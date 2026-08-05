@@ -1,7 +1,7 @@
 namespace Accounts.Domain;
 
 /// <summary>
-/// Bản ghi audit dựng từ **event stream Kafka** (không phải từ Service Bus) — minh hoạ đúng vai trò
+/// Bản ghi audit dựng từ event stream Kafka (không phải từ Service Bus) — minh hoạ đúng vai trò
 /// của Kafka: pipeline sự kiện để audit/analytics, replay được từ đầu topic khi cần dựng lại.
 /// </summary>
 public sealed class AuditEvent

@@ -13,7 +13,7 @@ using Microsoft.Extensions.Options;
 namespace Accounts.Infrastructure;
 
 /// <summary>
-/// Consume MoneyTransferred → áp số dư (SQL Server) một cách **idempotent** (inbox theo MessageId).
+/// Consume MoneyTransferred → áp số dư (SQL Server) một cách idempotent (inbox theo MessageId).
 /// Sau khi áp, phát event kết quả về Payments (saga): TransferCompleted | TransferFailed.
 ///
 /// Phân loại lỗi:
@@ -59,9 +59,7 @@ public sealed class MoneyTransferConsumer(
             [CorrelationContext.LogPropertyName] = CorrelationContext.Id ?? "-",
         });
 
-
-        // Contract versioning: schema lạ (do publisher đã nâng cấp trước) thì DỪNG, không đoán mò —
-        // đoán sai trên dữ liệu tiền bạc tệ hơn nhiều so với việc dead-letter và cảnh báo.
+        // Schema lạ (publisher đã nâng cấp trước) thì dead-letter, không đoán mò trên dữ liệu tiền tệ.
         var schemaVersion = args.Message.ApplicationProperties
             .TryGetValue(SchemaCompatibility.MessagePropertyName, out var sv) && sv is not null
                 ? Convert.ToInt32(sv) : 1;

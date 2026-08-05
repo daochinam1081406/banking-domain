@@ -5,7 +5,7 @@ namespace BuildingBlocks.State;
 /// <summary>
 /// Distributed lock trên Redis — chặn 2 instance cùng xử lý một thực thể (vd 2 giám định viên
 /// bấm duyệt cùng lúc, hoặc cùng 1 người double-click). Lock có TTL nên process chết không kẹt khoá.
-/// Nhả khoá bằng Lua so token để **không xoá nhầm khoá của người khác** khi mình đã hết hạn.
+/// Nhả khoá bằng Lua so token để không xoá nhầm khoá của người khác khi mình đã hết hạn.
 /// </summary>
 public interface IDistributedLock
 {

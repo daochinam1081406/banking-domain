@@ -22,8 +22,8 @@ public sealed class InvalidCredentialsException(string message) : Exception(mess
 /// <summary>
 /// Cấp + xoay refresh token.
 /// - `LoginAsync` mở family mới.
-/// - `RefreshAsync` **rotation**: mỗi lần refresh cấp cặp mới và revoke token cũ.
-/// - **Reuse detection**: token đã revoke bị dùng lại ⇒ token bị đánh cắp ⇒ revoke CẢ family
+/// - `RefreshAsync` rotation: mỗi lần refresh cấp cặp mới và revoke token cũ.
+/// - Reuse detection: token đã revoke bị dùng lại ⇒ token bị đánh cắp ⇒ revoke CẢ family
 ///   (buộc đăng nhập lại) — đúng khuyến nghị OWASP.
 /// </summary>
 public sealed class TokenService(

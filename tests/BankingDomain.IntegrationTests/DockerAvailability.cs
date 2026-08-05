@@ -4,7 +4,7 @@ namespace BankingDomain.IntegrationTests;
 
 /// <summary>
 /// Integration test cần Docker (Testcontainers). Máy dev không có Docker — hoặc testhost không
-/// truy cập được socket — thì **skip** chứ không fail: fail đỏ vì thiếu hạ tầng làm mất giá trị
+/// truy cập được socket — thì skip chứ không fail: fail đỏ vì thiếu hạ tầng làm mất giá trị
 /// tín hiệu của test suite. Trên CI (Linux runner có Docker) test chạy đầy đủ.
 /// </summary>
 public static class DockerAvailability

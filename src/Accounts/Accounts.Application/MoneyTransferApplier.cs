@@ -12,9 +12,9 @@ public sealed record ApplyTransferOutcome(bool Applied, bool Duplicate, string? 
 }
 
 /// <summary>
-/// Use case: áp 1 lệnh chuyển tiền — **idempotent** qua inbox (messageId).
+/// Use case: áp 1 lệnh chuyển tiền — idempotent qua inbox (messageId).
 /// Số dư + bút toán kép + đánh dấu inbox commit trong CÙNG 1 SaveChanges (atomic).
-/// Lỗi nghiệp vụ (số dư, tiền tệ, không tồn tại) là **permanent** → trả Failed để consumer phát
+/// Lỗi nghiệp vụ (số dư, tiền tệ, không tồn tại) là permanent → trả Failed để consumer phát
 /// compensating event, KHÔNG retry vô ích.
 /// </summary>
 public sealed class MoneyTransferApplier(

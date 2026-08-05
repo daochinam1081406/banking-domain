@@ -8,7 +8,7 @@ namespace BuildingBlocks.Messaging;
 
 /// <summary>
 /// Producer Kafka cho luồng streaming. `key` quyết định partition ⇒ mọi event của cùng một
-/// tài khoản/hợp đồng rơi vào cùng partition ⇒ **đảm bảo thứ tự** cho thực thể đó.
+/// tài khoản/hợp đồng rơi vào cùng partition ⇒ đảm bảo thứ tự cho thực thể đó.
 /// Idempotent producer + Acks.All để không mất/không nhân đôi khi retry.
 /// </summary>
 public sealed class KafkaEventStreamPublisher : IEventStreamPublisher, IDisposable
@@ -56,10 +56,8 @@ public sealed class KafkaEventStreamPublisher : IEventStreamPublisher, IDisposab
     }
 
     /// <summary>
-    /// `Produce` (không await) chỉ xếp message vào hàng đợi nội bộ của librdkafka — nó tự gộp
-    /// thành ít request tới broker. Chỉ `Flush` một lần ở cuối để chờ toàn bộ delivery report.
-    /// Khác hẳn `ProduceAsync` từng message: cách đó chờ ack cho mỗi message, biến độ trễ mạng
-    /// thành số nhân trên toàn lô.
+    /// <c>Produce</c> chỉ xếp vào hàng đợi nội bộ của librdkafka (tự gộp request), <c>Flush</c>
+    /// một lần ở cuối chờ toàn bộ delivery report — thay vì chờ ack từng message.
     /// </summary>
     public Task PublishBatchAsync(IReadOnlyList<OutboxMessage> messages, CancellationToken ct = default)
     {

@@ -169,7 +169,7 @@ export function InsurancePage() {
       </form>
 
       <div className="section-title">
-        {isAdjuster ? 'Hàng chờ giám định' : 'Hồ sơ bồi thường của tôi'} <span className="muted">— duyệt sẽ tự chi trả về tài khoản ngân hàng (saga)</span>
+        {isAdjuster ? 'Hàng chờ giám định' : 'Hồ sơ bồi thường của tôi'} <span className="muted">— hồ sơ được duyệt sẽ tự chi trả về tài khoản ngân hàng</span>
       </div>
       <div className="card">
         {claims.length === 0 ? (

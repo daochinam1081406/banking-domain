@@ -22,19 +22,12 @@ public sealed record InitiateTransferResult(Guid TransferId, string Status);
 public interface ITransferRepository
 {
     /// <summary>
-    /// Ghi transfer + TẤT CẢ outbox event + (tuỳ chọn) dấu inbox trong **một transaction**.
-    ///
-    /// <para><b>inboxMessageId</b> — bắt buộc truyền khi hàm này được gọi từ consumer. Broker chỉ
-    /// bảo đảm at-least-once: cùng một message có thể được giao lại (Complete lỗi, lease hết hạn,
-    /// service restart giữa chừng). Không có dấu inbox commit chung transaction thì mỗi lần giao lại
-    /// sinh thêm một Transfer mới ⇒ <b>chi tiền nhiều lần cho cùng một hồ sơ bồi thường</b>.
-    /// PRIMARY KEY của bảng inbox mới là thứ chặn, không phải logic trong bộ nhớ.</para>
-    ///
-    /// <para>Nhiều event: sự kiện báo kết quả saga phải đi CHUNG transaction với transfer. Nếu publish
-    /// riêng ở ngoài, crash vào đúng khe giữa hai bước sẽ để hồ sơ kẹt ở Approved vĩnh viễn —
-    /// tiền đã chuyển mà bên bảo hiểm không bao giờ biết.</para>
+    /// Ghi transfer + mọi outbox event + dấu inbox trong một transaction.
+    /// Consumer BẮT BUỘC truyền <paramref name="inboxMessageId"/>: broker at-least-once nên message
+    /// giao lại sẽ sinh thêm Transfer mới, tức chi tiền nhiều lần cho cùng một hồ sơ.
+    /// Event báo kết quả saga cũng phải đi chung transaction, tránh chuyển tiền xong mà bên kia không biết.
     /// </summary>
-    /// <returns><c>false</c> nếu <paramref name="inboxMessageId"/> đã xử lý rồi (không ghi gì cả).</returns>
+    /// <returns><c>false</c> nếu message đã xử lý rồi (không ghi gì cả).</returns>
     Task<bool> SaveWithOutboxAsync(
         Transfer transfer,
         IReadOnlyList<IntegrationEvent> integrationEvents,
@@ -44,7 +37,7 @@ public interface ITransferRepository
 
 public static class TransferRepositoryExtensions
 {
-    /// <summary>Trường hợp một event, gọi từ API (không qua broker nên không cần dấu inbox).</summary>
+    /// <summary>Một event, gọi từ API — không qua broker nên không cần dấu inbox.</summary>
     public static Task SaveWithOutboxAsync(
         this ITransferRepository repo, Transfer transfer,
         IntegrationEvent integrationEvent, CancellationToken ct = default)

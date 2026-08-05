@@ -20,16 +20,10 @@ public sealed class TooManyLoginAttemptsException(string message, TimeSpan retry
 }
 
 /// <summary>
-/// Chống brute-force đăng nhập. Đếm **trên Redis** chứ không in-memory: hệ chạy nhiều instance,
-/// bộ đếm cục bộ nghĩa là kẻ tấn công chỉ cần xoay vòng pod là vượt được giới hạn.
-///
-/// Hai lớp đếm:
-///  • theo **tài khoản** — chặn dò mật khẩu của 1 người;
-///  • theo **IP** — chặn dò 1 mật khẩu phổ biến trên nhiều tài khoản (password spraying),
-///    kiểu tấn công mà đếm-theo-tài-khoản hoàn toàn không thấy.
-///
-/// Đếm cả khi tài khoản KHÔNG tồn tại — nếu chỉ đếm tài khoản có thật thì thời gian phản hồi
-/// khác nhau sẽ để lộ tài khoản nào tồn tại (user enumeration).
+/// Chống brute-force đăng nhập. Bộ đếm nằm trên Redis vì in-memory thì attacker chỉ cần xoay
+/// vòng instance là vượt giới hạn. Đếm theo cả tài khoản (dò một người) lẫn IP (password
+/// spraying — dò một mật khẩu trên nhiều tài khoản, lớp theo-tài-khoản không thấy được).
+/// Đếm cả user không tồn tại, nếu không chênh lệch thời gian phản hồi sẽ lộ tài khoản nào có thật.
 /// </summary>
 public interface ILoginThrottle
 {
@@ -78,15 +72,14 @@ public sealed class RedisLoginThrottle(
         if (!string.IsNullOrWhiteSpace(ipAddress)) await IncrementAsync(db, IpKey(ipAddress));
     }
 
-    /// <summary>Đăng nhập đúng → xoá bộ đếm của tài khoản (giữ bộ đếm IP để không tự mở khoá cho attacker).</summary>
+    /// <summary>Giữ bộ đếm IP để một lần đăng nhập đúng không tự mở khoá cho attacker.</summary>
     public Task ResetAsync(string username, CancellationToken ct = default)
         => redis.GetDatabase().KeyDeleteAsync(AccountKey(username));
 
     private async Task IncrementAsync(IDatabase db, string key)
     {
         var count = await db.StringIncrementAsync(key);
-        // Chỉ đặt TTL ở lần đầu → cửa sổ trượt tính từ lần sai đầu tiên, attacker không thể
-        // "làm mới" hạn bằng cách thử liên tục.
+        // TTL chỉ đặt ở lần sai đầu tiên, nếu không attacker thử liên tục là gia hạn được cửa sổ.
         if (count == 1) await db.KeyExpireAsync(key, options.Window);
     }
 }

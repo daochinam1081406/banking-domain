@@ -11,7 +11,7 @@ public enum PolicyStatus
 }
 
 /// <summary>
-/// Hợp đồng bảo hiểm. Chỉ hợp đồng **Active** và còn trong thời hạn mới được bồi thường.
+/// Hợp đồng bảo hiểm. Chỉ hợp đồng Active và còn trong thời hạn mới được bồi thường.
 /// `CoverageAmount` là hạn mức tổng — tổng bồi thường đã duyệt không được vượt (tracked qua ClaimedAmount).
 /// </summary>
 public sealed class Policy

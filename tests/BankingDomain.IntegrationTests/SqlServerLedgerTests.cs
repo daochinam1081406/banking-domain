@@ -5,14 +5,13 @@ using Microsoft.EntityFrameworkCore;
 using Testcontainers.MsSql;
 using Xunit;
 
-
 namespace BankingDomain.IntegrationTests;
 
 /// <summary>
-/// Chạy trên **SQL Server thật**. Kiểm những thứ chỉ lộ ở tầng DB:
-///  • `RowVersion` (rowversion của SQL Server) có thật sự chặn lost update không
-///  • Inbox dedup dựa vào **PRIMARY KEY**, không phải logic in-memory
-///  • Bút toán kép ghi cùng transaction với số dư
+/// Chạy trên SQL Server thật. Kiểm những thứ chỉ lộ ở tầng DB:
+///  - `RowVersion` (rowversion của SQL Server) có thật sự chặn lost update không
+///  - Inbox dedup dựa vào PRIMARY KEY, không phải logic in-memory
+///  - Bút toán kép ghi cùng transaction với số dư
 /// </summary>
 public sealed class SqlServerLedgerTests : IAsyncLifetime
 {

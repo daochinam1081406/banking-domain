@@ -27,14 +27,23 @@ POST /api/transfers                         GET /api/accounts/{id}
 - **Accounts.Api** — consume, áp số dư **idempotent** (bảng inbox `processed_messages` + optimistic concurrency `RowVersion`), rồi phát `TransferCompleted`/`TransferFailed`.
 - **Saga khép kín** — Payments consume event kết quả → transfer chuyển `Initiated → Completed | Failed` (không kẹt trạng thái).
 
-## Chạy local (không cần Azure thật) — ✅ đã verify end-to-end
+## Chạy local (không cần Azure thật)
+
+Tài khoản có sẵn sau khi khởi động (seed lúc startup):
+
+| Tài khoản | Mật khẩu | Vai trò |
+|---|---|---|
+| `demo` | `Demo@123` | Khách hàng |
+| `alice` | `Alice@123` | Khách hàng |
+| `adjuster` | `Adjuster@123` | Giám định viên — duyệt/từ chối hồ sơ bồi thường |
 
 ```bash
-docker compose up -d --build       # mssql + postgres + redis + Service Bus emulator + 2 service
+docker compose up -d --build       # mssql + postgres + redis + Kafka + Service Bus emulator + 3 service
 
-# 1) Lấy JWT (endpoint nghiệp vụ yêu cầu Bearer token)
-TOKEN=$(curl -s -X POST http://localhost:8081/token -H "Content-Type: application/json" \
-  -d '{"subject":"demo","role":"customer"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+# 1) Đăng nhập lấy access token
+TOKEN=$(curl -s -X POST http://localhost:8081/auth/login -H "Content-Type: application/json" \
+  -d '{"username":"demo","password":"Demo@123"}' \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['accessToken'])")
 
 # 2) Chuyển tiền (Payments: gRPC validate số dư → Outbox → Service Bus)
 curl -X POST http://localhost:8081/api/transfers -H "Authorization: Bearer $TOKEN" \

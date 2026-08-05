@@ -7,17 +7,19 @@ using Microsoft.Extensions.Options;
 namespace BuildingBlocks.Messaging;
 
 /// <summary>
-/// Nền cho Kafka consumer: **consumer group** (scale ngang — mỗi partition chỉ 1 consumer trong group),
-/// **manual offset commit** (chỉ commit sau khi xử lý xong → at-least-once, không mất message khi crash),
+/// Nền cho Kafka consumer: consumer group (scale ngang — mỗi partition chỉ 1 consumer trong group),
+/// manual offset commit (chỉ commit sau khi xử lý xong → at-least-once, không mất message khi crash),
 /// và log partition/offset để trace.
 ///
-/// Khác Service Bus: Kafka giữ message theo retention (replay được), ordering đảm bảo **trong 1 partition**
+/// Khác Service Bus: Kafka giữ message theo retention (replay được), ordering đảm bảo trong 1 partition
 /// nên key phải chọn sao cho các message cần thứ tự rơi cùng partition (ở đây key = accountNumber/messageId).
 /// </summary>
 public abstract class KafkaConsumerBase(
     IOptions<KafkaOptions> options,
     ILogger logger) : BackgroundService
 {
+    protected KafkaOptions Options => options.Value;
+
     protected abstract string ConsumerGroup { get; }
 
     /// <summary>Xử lý 1 message. Ném exception ⇒ KHÔNG commit offset ⇒ message được giao lại.</summary>
