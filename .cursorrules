@@ -100,9 +100,9 @@ Mỗi feature PHẢI map về 1 dòng JD (xem bảng §2 trong CLAUDE.md). KHÔN
 - **Test:** unit test cho domain; **integration test (Testcontainers)** cho thứ chỉ lộ ở tầng DB
   (mapping kiểu dữ liệu, concurrency token, inbox PK, SKIP LOCKED).
 
-## Cấu trúc (Clean Architecture per service — Phase 2)
+## Cấu trúc (Clean Architecture — cả 3 service đã tách đủ 4 layer)
 `X.Domain` (không phụ thuộc) → `X.Application` → `X.Infrastructure` (EF/Dapper, Outbox, consumer) → `X.Api`.
-Contract integration event dùng chung ở `BuildingBlocks/Contracts`.
+Integration event dùng chung ở project riêng **`BuildingBlocks.Contracts`** (ZERO dependency).
 
 ## Git — CỰC KỲ QUAN TRỌNG
 ```
@@ -113,16 +113,19 @@ Contract integration event dùng chung ở `BuildingBlocks/Contracts`.
 Branch flow (giống allinone/D-Pro): `namdaoint` (dev chính, default) → `develop` → `staging` → `production`.
 
 ## Trạng thái — TẤT CẢ PHASE DONE ✅
-- **P1:** Payments + Accounts + Azure Service Bus + emulator + docker-compose.
-- **P2:** SQL Server/EF (Accounts) + PostgreSQL/Dapper (Payments) + DDD/Clean Arch 4 layer + Outbox +
-  JWT + gRPC (h2c port 8090) + Event Grid + Kafka (`Messaging:Provider`) + Redis cache-aside.
-- **P3:** GitHub Actions CI (file ở `deploy/ci/ci.yml.reference`) + xUnit **18 tests** + k8s/AKS manifests
-  + Application Insights (conditional).
-- **Docs:** `docs/MONOLITH-TO-MICROSERVICES.md` (strangler fig, trade-off, bài học thật).
-- **Bonus:** React FE (`frontend/`, port 5174 — dashboard theo owner + **UI sao kê** bút toán kép, chuyển tiền) + `docs/ARCHITECTURE.md` (Mermaid).
-- **Reliability hardening:** inbox `processed_messages` (idempotent thật), `RowVersion` optimistic
-  concurrency, saga `TransferCompleted`/`TransferFailed` đóng trạng thái, ProblemDetails, health check thật.
-- **Nghiệp vụ banking:** ownership + currency + double-entry ledger & sao kê. **Bảo hiểm:** Policy/Claim + saga chi trả (Insurance→Payments→Accounts→Insurance). **40 unit tests.**
-- **Senior hardening:** correlation ID xuyên service (verified: 1 id nối log payments↔accounts), Serilog +
-  OpenTelemetry, Polly trên gRPC, refresh token rotation + reuse detection. **24 unit tests.**
-- **Verified end-to-end** qua `docker compose` (transfer đổi số dư, status Completed, domain error → 400).
+- **Service:** Insurance · Accounts (SQL Server/EF) · Payments (PostgreSQL/Dapper) — DB-per-service, 4 layer.
+- **Messaging:** Service Bus (saga) + Kafka producer & consumer thật + Event Grid publisher & webhook. Outbox 2 chiều.
+- **Reliability:** inbox dedup (PK), optimistic concurrency (rowversion / xmin), saga đóng trạng thái,
+  ProblemDetails, health check probe thật, correlation ID xuyên service, Polly, refresh rotation + reuse detection.
+- **Security:** PBKDF2 600k + salt, RBAC `customer`/`adjuster`, ownership check, **login throttle Redis (account + IP) → 429**.
+- **Contract:** `SchemaVersion` trong mọi event + cột `outbox.schema_version`; consumer dead-letter version lạ.
+- **Nghiệp vụ:** double-entry ledger + sao kê · Policy (miễn thường/đồng chi trả/thời gian chờ) ·
+  Claim → saga chi trả sang ngân hàng · bancassurance thu phí.
+- **Tests:** **64 unit** + **8 integration** (Testcontainers: Postgres + SQL Server thật, auto-skip nếu thiếu Docker).
+- **Ops:** Docker Compose (kèm SB emulator) · 11 k8s manifest + HPA · CI reference · App Insights (conditional).
+- **Bonus:** React FE (port 5174) · `docs/ARCHITECTURE.md` + `docs/MONOLITH-TO-MICROSERVICES.md`.
+- **Verified end-to-end** qua `docker compose`: transfer, saga chi trả claim, rate-limit 429, schema_version.
+
+## Giới hạn đã biết — nói thật khi được hỏi
+Chưa load test · chưa deploy cluster thật (manifest validate offline) · CI chưa chạy trên GitHub ·
+OTel chưa export ra backend · hạ tầng single-node · Event Grid publisher cần Azure thật.
