@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/api/banking.ts","./src/api/client.ts","./src/api/insurance.ts","./src/auth/authcontext.tsx","./src/auth/requireauth.tsx","./src/layout/appshell.tsx","./src/pages/dashboardpage.tsx","./src/pages/insurancepage.tsx","./src/pages/loginpage.tsx","./src/pages/transferspage.tsx"],"version":"5.9.3"}
