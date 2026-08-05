@@ -47,6 +47,13 @@ Mỗi feature PHẢI map về 1 dòng JD (xem bảng §2 trong CLAUDE.md). KHÔN
 - **Resilience:** HTTP/gRPC client dùng `AddStandardResilienceHandler()` (Polly).
 - **Health check:** phải probe dependency thật (DB/Redis), không trả "healthy" cứng.
 
+## Hai broker song song — dùng đúng vai trò
+- **Service Bus** = giao dịch/saga (DLQ, ordering, retry). **Kafka** = event streaming (audit/analytics, replay được).
+- `IEventBus` (SB) tách khỏi `IEventStreamPublisher` (Kafka); Outbox publish cả hai. Kafka lỗi = best-effort,
+  không làm chết luồng giao dịch.
+- Kafka consumer: consumer group riêng, `EnableAutoCommit=false`, commit SAU khi xử lý (at-least-once);
+  key quyết định partition ⇒ giữ thứ tự theo thực thể.
+
 ## Nghiệp vụ bảo hiểm — BẮT BUỘC
 - **Công thức chi trả:** `(chi phí công nhận − miễn thường) × (1 − đồng chi trả)`, cap bởi hạn mức còn lại;
   trừ hạn mức theo số **thực trả**. Thời gian chờ → chặn `WITHIN_WAITING_PERIOD`.

@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<TokenService>();
 
         services.AddEventBus(config);                          // IEventBus: ServiceBus | EventGrid | Kafka
+        services.AddKafkaEventStream(config);                  // stream song song sang Kafka
         services.AddHostedService<OutboxPublisher>();          // outbox → broker đã chọn
         services.AddHostedService<TransferResultConsumer>();   // saga: nhận kết quả từ Accounts
         services.Configure<InsurerAccountOptions>(config.GetSection("Insurer"));

@@ -30,7 +30,7 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | Redis | ✅ P2 | cache-aside số dư (Accounts) + invalidate khi transfer |
 | **Azure Service Bus** | ✅ P1 | `AzureServiceBusEventBus` |
 | **Azure Event Grid** | ✅ P2 | `EventGridEventBus` (chọn qua `Messaging:Provider`) |
-| **Kafka** | ✅ P2 | `KafkaEventBus` (chọn qua `Messaging:Provider`) |
+| **Kafka** | ✅ | **Producer + Consumer thật đang chạy**: dual-publish (SB cho saga, Kafka cho stream), `KafkaConsumerBase` — consumer group, 3 partitions, manual offset commit; audit trail dựng từ stream |
 | Microservices architecture | ✅ | 2 service tách, **DB-per-service** (SQL Server + Postgres) |
 | Event-driven architecture | ✅ | integration events qua broker + Outbox |
 | RESTful API + **gRPC** | ✅ P2 | Minimal API + gRPC AccountCheck (Payments→Accounts sync) |

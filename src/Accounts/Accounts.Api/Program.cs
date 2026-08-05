@@ -78,6 +78,13 @@ app.MapGet("/api/accounts/{number}", async (
     return dto.OwnerId == user.Subject() ? Results.Ok(dto) : Results.NotFound();
 }).RequireAuthorization();
 
+// Audit trail dựng từ Kafka event stream (chứng minh consumer group hoạt động).
+app.MapGet("/api/audit", async (AccountsDbContext db, CancellationToken ct) =>
+    Results.Ok(await db.AuditEvents.AsNoTracking()
+        .OrderByDescending(a => a.ReceivedAt).Take(30)
+        .Select(a => new { a.EventType, a.CorrelationId, a.ReceivedAt })
+        .ToListAsync(ct))).RequireAuthorization();
+
 // Sao kê — bút toán bất biến của tài khoản (nguồn sự thật để đối soát).
 app.MapGet("/api/accounts/{number}/statement", async (
     string number, ClaimsPrincipal user, IAccountReadService reads,

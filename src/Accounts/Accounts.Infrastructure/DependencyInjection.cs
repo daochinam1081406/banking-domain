@@ -42,6 +42,11 @@ public static class DependencyInjection
         services.AddEventBus(config);                    // publish saga result events về Payments
         services.AddHostedService<MoneyTransferConsumer>();
 
+        // Kafka: consumer group riêng dựng audit trail từ event stream
+        services.Configure<KafkaOptions>(config.GetSection("Kafka"));
+        if (!string.IsNullOrWhiteSpace(config["Kafka:BootstrapServers"]))
+            services.AddHostedService<AuditStreamConsumer>();
+
         // Health check thật — probe DB (và Redis nếu bật), không phải trả "healthy" cứng.
         var health = services.AddHealthChecks().AddDbContextCheck<AccountsDbContext>("sqlserver");
         if (!string.IsNullOrWhiteSpace(redisConn))

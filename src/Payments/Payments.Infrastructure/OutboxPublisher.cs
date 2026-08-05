@@ -15,6 +15,7 @@ namespace Payments.Infrastructure;
 public sealed class OutboxPublisher(
     NpgsqlDataSource dataSource,
     IEventBus eventBus,
+    IEventStreamPublisher eventStream,
     ILogger<OutboxPublisher> logger) : BackgroundService
 {
     private sealed record OutboxRow(Guid Id, string EventType, string Payload, string? CorrelationId);
@@ -53,6 +54,10 @@ public sealed class OutboxPublisher(
                 [CorrelationContext.LogPropertyName] = CorrelationContext.Id ?? "-",
             });
             await eventBus.PublishRawAsync(row.EventType, row.Payload, row.Id.ToString(), ct);
+
+            // Song song: đẩy sang Kafka làm event stream (audit/analytics, replay được).
+            // Service Bus lo giao dịch/saga; Kafka lo streaming — hai vai trò khác nhau.
+            await eventStream.PublishAsync(row.EventType, row.Payload, row.Id.ToString(), ct);
             await conn.ExecuteAsync(new CommandDefinition(
                 "UPDATE outbox SET status = 'PUBLISHED', published_at = NOW() WHERE id = @Id",
                 new { row.Id }, tx, cancellationToken: ct));

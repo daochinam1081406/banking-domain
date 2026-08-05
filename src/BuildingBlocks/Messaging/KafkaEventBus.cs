@@ -10,7 +10,10 @@ namespace BuildingBlocks.Messaging;
 public sealed class KafkaOptions
 {
     public string BootstrapServers { get; set; } = "localhost:9092";
-    public string Topic { get; set; } = "banking-events";
+    public string Topic { get; set; } = "banking.events";
+    public string ConsumerGroup { get; set; } = "default-group";
+    /// <summary>Bật stream sang Kafka song song với Service Bus (dual-publish).</summary>
+    public bool Enabled { get; set; } = true;
 }
 
 /// <summary>IEventBus impl trên Kafka — key = messageId (ordering/partition), header eventType.</summary>

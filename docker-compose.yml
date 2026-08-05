@@ -23,6 +23,26 @@ services:
     volumes:
       - ./deploy/init-insurance-db.sql:/docker-entrypoint-initdb.d/10-insurance.sql:ro
 
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3          # nhiều partition để thấy phân phối + ordering theo key
+      CLUSTER_ID: "banking-kafka-cluster"
+    ports:
+      - "9094:9092"   # host 9094 tránh đụng Kafka của D-Pro (9092)
+
   redis:
     image: redis:7-alpine
     ports:
@@ -49,12 +69,15 @@ services:
       - servicebus-emulator
       - postgres
       - accounts-api
+      - kafka
     environment:
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=payments;Username=postgres;Password=postgres"
       Grpc__AccountsUrl: "http://accounts-api:8090"
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ServiceBus__TopicName: "banking-events"
       ServiceBus__SubscriptionName: "payments-subscription"
+      Kafka__BootstrapServers: "kafka:9092"
+      Kafka__Topic: "banking.events"
       Insurer__PayoutFromAccount: "INS-FUND"
       Insurer__SubscriptionName: "payments-payout-subscription"
     ports:
@@ -68,12 +91,16 @@ services:
       - servicebus-emulator
       - mssql
       - redis
+      - kafka
     environment:
       ConnectionStrings__SqlServer: "Server=mssql,1433;Database=accounts;User Id=sa;Password=Str0ng!Passw0rd;TrustServerCertificate=true;"
       ConnectionStrings__Redis: "redis:6379"
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ServiceBus__TopicName: "banking-events"
       ServiceBus__SubscriptionName: "accounts-subscription"
+      Kafka__BootstrapServers: "kafka:9092"
+      Kafka__Topic: "banking.events"
+      Kafka__ConsumerGroup: "audit-service"
     ports:
       - "8082:8080"
 

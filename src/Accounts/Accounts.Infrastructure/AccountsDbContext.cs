@@ -8,6 +8,7 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<ProcessedMessage> ProcessedMessages => Set<ProcessedMessage>();
     public DbSet<LedgerEntry> LedgerEntries => Set<LedgerEntry>();
+    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,6 +37,17 @@ public sealed class AccountsDbContext(DbContextOptions<AccountsDbContext> option
             e.Property(l => l.Direction).HasConversion<string>().HasMaxLength(10);
             e.HasIndex(l => new { l.AccountNumber, l.CreatedAt });
             e.HasIndex(l => l.TransferId);
+        });
+
+        modelBuilder.Entity<AuditEvent>(e =>
+        {
+            e.ToTable("audit_events");
+            e.HasKey(a => a.Id);
+            e.Property(a => a.EventType).HasMaxLength(100).IsRequired();
+            e.Property(a => a.CorrelationId).HasMaxLength(64);
+            e.Property(a => a.Payload).HasMaxLength(4000).IsRequired();
+            e.HasIndex(a => a.ReceivedAt);
+            e.HasIndex(a => a.CorrelationId);
         });
 
         modelBuilder.Entity<ProcessedMessage>(e =>
