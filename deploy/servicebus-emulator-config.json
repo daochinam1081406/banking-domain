@@ -24,6 +24,22 @@
                   "MaxDeliveryCount": 5
                 },
                 "Rules": []
+              },
+              {
+                "Name": "insurance-subscription",
+                "Properties": {
+                  "DeadLetteringOnMessageExpiration": true,
+                  "MaxDeliveryCount": 5
+                },
+                "Rules": []
+              },
+              {
+                "Name": "payments-payout-subscription",
+                "Properties": {
+                  "DeadLetteringOnMessageExpiration": true,
+                  "MaxDeliveryCount": 5
+                },
+                "Rules": []
               }
             ]
           }

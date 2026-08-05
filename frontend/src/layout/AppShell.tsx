@@ -13,6 +13,7 @@ export function AppShell() {
         <div className="nav">
           <NavLink to="/" end>Dashboard</NavLink>
           <NavLink to="/transfers">Chuyển tiền</NavLink>
+          <NavLink to="/insurance">Bảo hiểm</NavLink>
         </div>
         <div className="sidebar-foot">
           .NET microservices · Azure Service Bus<br />Event-driven demo
@@ -22,7 +23,7 @@ export function AppShell() {
         <div className="topbar">
           <div>
             <h1>Banking Console</h1>
-            <div className="sub">Accounts (SQL Server) · Payments (PostgreSQL) · Outbox → Service Bus</div>
+            <div className="sub">Insurance · Accounts (SQL Server) · Payments (PostgreSQL) · Outbox → Service Bus</div>
           </div>
           <div className="user-chip">
             <span>👤 {user}</span>

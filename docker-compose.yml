@@ -20,6 +20,8 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - "5433:5432"   # host 5433 để tránh đụng D-Pro (deploy-postgres-1:5432)
+    volumes:
+      - ./deploy/init-insurance-db.sql:/docker-entrypoint-initdb.d/10-insurance.sql:ro
 
   redis:
     image: redis:7-alpine
@@ -53,6 +55,8 @@ services:
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ServiceBus__TopicName: "banking-events"
       ServiceBus__SubscriptionName: "payments-subscription"
+      Insurer__PayoutFromAccount: "INS-FUND"
+      Insurer__SubscriptionName: "payments-payout-subscription"
     ports:
       - "8081:8080"
 
@@ -72,3 +76,18 @@ services:
       ServiceBus__SubscriptionName: "accounts-subscription"
     ports:
       - "8082:8080"
+
+  insurance-api:
+    build:
+      context: .
+      dockerfile: src/Insurance/Insurance.Api/Dockerfile
+    depends_on:
+      - servicebus-emulator
+      - postgres
+    environment:
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=insurance;Username=postgres;Password=postgres"
+      ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
+      ServiceBus__TopicName: "banking-events"
+      ServiceBus__SubscriptionName: "insurance-subscription"
+    ports:
+      - "8083:8080"

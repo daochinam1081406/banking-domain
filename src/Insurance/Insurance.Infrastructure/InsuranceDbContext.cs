@@ -1,0 +1,49 @@
+using Insurance.Domain;
+using Microsoft.EntityFrameworkCore;
+
+namespace Insurance.Infrastructure;
+
+public sealed class InsuranceDbContext(DbContextOptions<InsuranceDbContext> options) : DbContext(options)
+{
+    public DbSet<Policy> Policies => Set<Policy>();
+    public DbSet<Claim> Claims => Set<Claim>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Policy>(e =>
+        {
+            e.ToTable("policies");
+            e.HasKey(p => p.Id);
+            e.Property(p => p.PolicyNumber).HasMaxLength(30).IsRequired();
+            e.HasIndex(p => p.PolicyNumber).IsUnique();
+            e.Property(p => p.PolicyHolderId).HasMaxLength(100).IsRequired();
+            e.HasIndex(p => p.PolicyHolderId);
+            e.Property(p => p.ProductCode).HasMaxLength(20).IsRequired();
+            e.Property(p => p.Currency).HasMaxLength(3).IsRequired();
+            e.Property(p => p.PayoutAccount).HasMaxLength(50).IsRequired();
+            e.Property(p => p.CoverageAmount).HasPrecision(18, 2);
+            e.Property(p => p.PremiumAmount).HasPrecision(18, 2);
+            e.Property(p => p.ClaimedAmount).HasPrecision(18, 2);
+            e.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<Claim>(e =>
+        {
+            e.ToTable("claims");
+            e.HasKey(c => c.Id);
+            e.Property(c => c.ClaimNumber).HasMaxLength(30).IsRequired();
+            e.HasIndex(c => c.ClaimNumber).IsUnique();
+            e.Property(c => c.PolicyNumber).HasMaxLength(30).IsRequired();
+            e.Property(c => c.ClaimantId).HasMaxLength(100).IsRequired();
+            e.HasIndex(c => c.ClaimantId);
+            e.Property(c => c.Currency).HasMaxLength(3).IsRequired();
+            e.Property(c => c.Description).HasMaxLength(1000).IsRequired();
+            e.Property(c => c.RequestedAmount).HasPrecision(18, 2);
+            e.Property(c => c.ApprovedAmount).HasPrecision(18, 2);
+            e.Property(c => c.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(c => c.ReviewerId).HasMaxLength(100);
+            e.Property(c => c.DecisionReason).HasMaxLength(500);
+            e.Property(c => c.RowVersion).IsRowVersion();   // optimistic concurrency
+        });
+    }
+}

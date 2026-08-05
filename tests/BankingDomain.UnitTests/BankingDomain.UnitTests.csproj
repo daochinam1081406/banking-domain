@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\Payments\Payments.Domain\Payments.Domain.csproj" />
     <ProjectReference Include="..\..\src\Accounts\Accounts.Application\Accounts.Application.csproj" />
     <ProjectReference Include="..\..\src\BuildingBlocks\BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\src\Insurance\Insurance.Domain\Insurance.Domain.csproj" />
   </ItemGroup>
 
 </Project>

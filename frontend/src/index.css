@@ -63,6 +63,10 @@ table.ledger tr:last-child td { border-bottom: none; }
 }
 .tag-debit { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
 .tag-credit { background: rgba(34,197,94,0.12); color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+.tag-info { font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+  background: rgba(59,130,246,0.12); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+.tag-warn { font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+  background: rgba(245,158,11,0.12); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
 .amt-out { color: #fca5a5; font-weight: 600; }
 .amt-in { color: #86efac; font-weight: 600; }
 

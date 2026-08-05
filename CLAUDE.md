@@ -12,8 +12,9 @@
 ## 1. Mục tiêu
 
 Demo **.NET Core microservices** bám sát **100% scope** một JD .NET Core Backend/Microservices
-(insurance/banking domain). Domain: ngân hàng (Account / Payment) — pattern map 1:1 sang bảo hiểm
-(Policy ↔ Account, Claim ↔ Transfer). Mục tiêu là **portfolio piece đóng đúng gap** mà dự án ERP/MES
+(insurance/banking domain). **3 service**: Insurance (Policy/Claim) · Accounts (sổ cái) · Payments
+(chuyển tiền). Nghiệp vụ **bảo hiểm thật** — không chỉ map lý thuyết: duyệt bồi thường sẽ tự động
+chi trả sang tài khoản ngân hàng qua saga xuyên service. Mục tiêu là **portfolio piece đóng đúng gap** mà dự án ERP/MES
 D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + microservices tách thật**.
 
 ---
@@ -43,6 +44,8 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | Frontend (bonus — JD không yêu cầu) | ✅ | React+Vite+TS `frontend/` — Login (JWT), Dashboard (tài khoản của mình + **sao kê bút toán kép**), Chuyển tiền (event-driven async) |
 | Docs | ✅ | ARCHITECTURE.md (Mermaid), k8s README, frontend README, CLAUDE.md + .cursorrules |
 | **Nghiệp vụ banking** | ✅ | Ownership (JWT sub) · currency validation · **double-entry ledger** + sao kê |
+| **Nghiệp vụ bảo hiểm** | ✅ | Policy (Draft→Active), hạn mức + thời hạn bảo hiểm, Claim (Submitted→Approved→**Paid**), giám định duyệt/từ chối |
+| **Saga liên domain** | ✅ | ClaimApproved → Payments chi trả từ quỹ `INS-FUND` → ClaimPayoutCompleted → Claim = Paid |
 
 **Nguyên tắc:** mỗi feature mới PHẢI ánh xạ về 1 dòng JD. Không thêm thứ ngoài scope.
 
@@ -93,6 +96,11 @@ banking-domain/
 │   │   ├── Accounts.Application/  ← commands/queries + handlers + repo interfaces
 │   │   ├── Accounts.Infrastructure/ ← EF Core (SQL Server), Outbox, consumers
 │   │   └── Accounts.Api/          ← Minimal API endpoints
+│   ├── Insurance/                 ← Policy + Claim (PostgreSQL + EF Core)
+│   │   ├── Insurance.Domain/       ← Policy, Claim aggregate + rules bảo hiểm
+│   │   ├── Insurance.Application/
+│   │   ├── Insurance.Infrastructure/
+│   │   └── Insurance.Api/
 │   └── Payments/
 │       ├── Payments.Domain/
 │       ├── Payments.Application/

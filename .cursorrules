@@ -6,7 +6,7 @@
 
 ## Project
 Demo .NET Core microservices bám sát **100% scope** JD .NET Core Backend/Microservices (banking/insurance).
-Domain ngân hàng (Account/Payment), map 1:1 sang bảo hiểm. Mục tiêu: đóng gap **Azure messaging +
+**3 service**: Insurance (Policy/Claim) · Accounts · Payments. Nghiệp vụ bảo hiểm THẬT + saga chi trả sang ngân hàng. Mục tiêu: đóng gap **Azure messaging +
 microservices tách thật** mà D-Pro (monolith, Kafka) không có.
 
 ## Nguyên tắc số 1 — bám scope JD
@@ -47,6 +47,13 @@ Mỗi feature PHẢI map về 1 dòng JD (xem bảng §2 trong CLAUDE.md). KHÔN
 - **Resilience:** HTTP/gRPC client dùng `AddStandardResilienceHandler()` (Polly).
 - **Health check:** phải probe dependency thật (DB/Redis), không trả "healthy" cứng.
 
+## Nghiệp vụ bảo hiểm — BẮT BUỘC
+- **Policy:** chỉ `Active` mới bồi thường được; sự cố phải trong thời hạn; không vượt `RemainingCoverage`.
+- **Claim:** `Submitted → UnderReview → Approved → Paid | Rejected`; duyệt ≤ số yêu cầu; duyệt trừ hạn mức.
+- **`Paid` chỉ do saga đặt** (Payments báo chi trả xong), không phải user bấm; `MarkPaid` idempotent.
+- Từ chối KHÔNG trừ hạn mức.
+- **Mỗi luồng consumer phải có subscription RIÊNG** — dùng chung = competing consumers, message bị nuốt.
+
 ## Nghiệp vụ banking — BẮT BUỘC
 - **Ownership:** `Account.OwnerId` = JWT subject; mọi thao tác tiền kiểm tra `IsOwnedBy`. Đọc tài khoản
   người khác → **404** (không lộ tồn tại); chuyển tiền → `FORBIDDEN_ACCOUNT`. KHÔNG cho client tự khai owner.
@@ -75,7 +82,7 @@ Branch flow (giống allinone/D-Pro): `namdaoint` (dev chính, default) → `dev
 - **Bonus:** React FE (`frontend/`, port 5174 — dashboard theo owner + **UI sao kê** bút toán kép, chuyển tiền) + `docs/ARCHITECTURE.md` (Mermaid).
 - **Reliability hardening:** inbox `processed_messages` (idempotent thật), `RowVersion` optimistic
   concurrency, saga `TransferCompleted`/`TransferFailed` đóng trạng thái, ProblemDetails, health check thật.
-- **Nghiệp vụ banking:** ownership + currency validation + double-entry ledger & sao kê (`/api/accounts/{n}/statement`). **30 unit tests.**
+- **Nghiệp vụ banking:** ownership + currency + double-entry ledger & sao kê. **Bảo hiểm:** Policy/Claim + saga chi trả (Insurance→Payments→Accounts→Insurance). **40 unit tests.**
 - **Senior hardening:** correlation ID xuyên service (verified: 1 id nối log payments↔accounts), Serilog +
   OpenTelemetry, Polly trên gRPC, refresh token rotation + reuse detection. **24 unit tests.**
 - **Verified end-to-end** qua `docker compose` (transfer đổi số dư, status Completed, domain error → 400).

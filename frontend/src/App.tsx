@@ -5,6 +5,7 @@ import { AppShell } from './layout/AppShell'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { TransfersPage } from './pages/TransfersPage'
+import { InsurancePage } from './pages/InsurancePage'
 
 export function App() {
   return (
@@ -16,6 +17,7 @@ export function App() {
             <Route element={<AppShell />}>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/transfers" element={<TransfersPage />} />
+              <Route path="/insurance" element={<InsurancePage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

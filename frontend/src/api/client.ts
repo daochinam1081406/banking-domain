@@ -1,5 +1,6 @@
 const PAYMENTS_URL = import.meta.env.VITE_PAYMENTS_URL ?? 'http://localhost:8081'
 const ACCOUNTS_URL = import.meta.env.VITE_ACCOUNTS_URL ?? 'http://localhost:8082'
+const INSURANCE_URL = import.meta.env.VITE_INSURANCE_URL ?? 'http://localhost:8083'
 
 export class ApiError extends Error {
   constructor(public status: number, public detail?: string) {
@@ -34,3 +35,4 @@ async function request<T>(baseUrl: string, path: string, opts: RequestInit = {})
 
 export const paymentsApi = <T>(path: string, opts?: RequestInit) => request<T>(PAYMENTS_URL, path, opts)
 export const accountsApi = <T>(path: string, opts?: RequestInit) => request<T>(ACCOUNTS_URL, path, opts)
+export const insuranceApi = <T>(path: string, opts?: RequestInit) => request<T>(INSURANCE_URL, path, opts)

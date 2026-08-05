@@ -35,6 +35,8 @@ public static class DependencyInjection
         services.AddEventBus(config);                          // IEventBus: ServiceBus | EventGrid | Kafka
         services.AddHostedService<OutboxPublisher>();          // outbox → broker đã chọn
         services.AddHostedService<TransferResultConsumer>();   // saga: nhận kết quả từ Accounts
+        services.Configure<InsurerAccountOptions>(config.GetSection("Insurer"));
+        services.AddHostedService<ClaimPayoutConsumer>();       // saga: chi trả bồi thường từ Insurance
 
         // Health check thật — probe Postgres qua DI (không BuildServiceProvider giữa chừng).
         services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres");
