@@ -50,6 +50,7 @@ Mỗi feature PHẢI map về 1 dòng JD (xem bảng §2 trong CLAUDE.md). KHÔN
 ## Nghiệp vụ bảo hiểm — BẮT BUỘC
 - **Công thức chi trả:** `(chi phí công nhận − miễn thường) × (1 − đồng chi trả)`, cap bởi hạn mức còn lại;
   trừ hạn mức theo số **thực trả**. Thời gian chờ → chặn `WITHIN_WAITING_PERIOD`.
+- ⚠️ Event chi trả mang **số thực trả** (`claim.ApprovedAmount`), KHÔNG phải chi phí công nhận — nhầm = chi thừa tiền.
 - **Chỉ Active khi đã THU ĐƯỢC PHÍ** (saga bank→insurer), không Active thủ công.
 - **Segregation of duties:** khách KHÔNG tự duyệt hồ sơ — approve/reject yêu cầu role `adjuster`.
 - **Auth:** login username/password PBKDF2-SHA256 600k + salt riêng; JWT mang role.
