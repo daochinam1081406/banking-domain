@@ -7,9 +7,26 @@ namespace Insurance.Application;
 // ── Commands ─────────────────────────────────────────────────────
 public sealed record IssuePolicyCommand(
     string ProductCode, decimal CoverageAmount, decimal PremiumAmount,
-    string PayoutAccount, DateOnly EffectiveFrom, DateOnly EffectiveTo, string? Currency)
+    string PayoutAccount, DateOnly EffectiveFrom, DateOnly EffectiveTo, string? Currency,
+    decimal? Deductible = null, decimal? CoPaymentRate = null, int? WaitingPeriodDays = null)
 {
     public string PolicyHolderId { get; init; } = string.Empty;   // gán từ JWT
+}
+
+/// <summary>
+/// Điều khoản mặc định theo sản phẩm — thực tế do bộ phận sản phẩm/actuary định nghĩa,
+/// ở đây hard-code cho demo (BH sức khoẻ VN thường có miễn thường + đồng chi trả + thời gian chờ).
+/// </summary>
+public static class ProductTerms
+{
+    public static (decimal Deductible, decimal CoPay, int WaitingDays) For(string productCode) =>
+        productCode.Trim().ToUpperInvariant() switch
+        {
+            "HEALTH" => (1_000_000m, 0.20m, 30),    // miễn thường 1tr, đồng chi trả 20%, chờ 30 ngày
+            "MOTOR"  => (500_000m,   0.10m, 0),     // xe: miễn thường 500k, không có thời gian chờ
+            "LIFE"   => (0m,         0m,    365),   // nhân thọ: chờ 1 năm, không miễn thường
+            _        => (0m,         0m,    0),
+        };
 }
 
 public sealed record SubmitClaimCommand(
@@ -18,7 +35,8 @@ public sealed record SubmitClaimCommand(
     public string ClaimantId { get; init; } = string.Empty;       // gán từ JWT
 }
 
-public sealed record ApproveClaimCommand(Guid ClaimId, decimal ApprovedAmount)
+/// <summary><c>AssessedCost</c> = chi phí giám định công nhận; số thực trả do hợp đồng tính.</summary>
+public sealed record ApproveClaimCommand(Guid ClaimId, decimal AssessedCost)
 {
     public string ReviewerId { get; init; } = string.Empty;
 }
@@ -41,9 +59,14 @@ public sealed class InsuranceService(
     public async Task<PolicyIssuedResult> IssuePolicyAsync(IssuePolicyCommand cmd, CancellationToken ct = default)
     {
         var number = await numbers.NextPolicyNumberAsync(ct);
+        var terms = ProductTerms.For(cmd.ProductCode);
+
         var policy = Policy.Issue(
             number, cmd.PolicyHolderId, cmd.ProductCode, cmd.CoverageAmount, cmd.PremiumAmount,
-            cmd.PayoutAccount, cmd.EffectiveFrom, cmd.EffectiveTo, cmd.Currency ?? "VND");
+            cmd.PayoutAccount, cmd.EffectiveFrom, cmd.EffectiveTo, cmd.Currency ?? "VND",
+            cmd.Deductible ?? terms.Deductible,
+            cmd.CoPaymentRate ?? terms.CoPay,
+            cmd.WaitingPeriodDays ?? terms.WaitingDays);
 
         await policies.AddAsync(policy, ct);
         await policies.SaveChangesAsync(ct);
@@ -89,17 +112,18 @@ public sealed class InsuranceService(
         var policy = await policies.GetByIdAsync(claim.PolicyId, ct)
             ?? throw new InsuranceDomainException("Hợp đồng không tồn tại.", "POLICY_NOT_FOUND");
 
-        claim.Approve(cmd.ReviewerId, cmd.ApprovedAmount, policy);
+        claim.Approve(cmd.ReviewerId, cmd.AssessedCost, policy);
         await claims.SaveChangesAsync(ct);   // claim + policy cùng DbContext → 1 transaction
 
-        // Saga: báo Payments chi trả cho khách.
+        // Saga: chi trả đúng **số thực trả** do hợp đồng tính (sau miễn thường + đồng chi trả),
+        // KHÔNG phải chi phí giám định công nhận — nhầm chỗ này là chi thừa tiền cho khách.
         await payouts.PublishApprovedAsync(new ClaimApprovedIntegrationEvent
         {
             ClaimId       = claim.Id,
             ClaimNumber   = claim.ClaimNumber,
             PolicyNumber  = claim.PolicyNumber,
             PayoutAccount = policy.PayoutAccount,
-            Amount        = cmd.ApprovedAmount,
+            Amount        = claim.ApprovedAmount!.Value,
             Currency      = claim.Currency,
         }, ct);
     }

@@ -122,8 +122,10 @@ export function InsurancePage() {
                 >Đóng phí qua NH</button>
               )}
             </div>
-            <div className="muted" style={{ fontSize: '0.72rem', marginTop: '0.5rem' }}>
-              Hiệu lực {p.effectiveFrom} → {p.effectiveTo} · chi trả về {p.payoutAccount}
+            <div className="muted" style={{ fontSize: '0.72rem', marginTop: '0.5rem', lineHeight: 1.6 }}>
+              Hiệu lực {p.effectiveFrom} → {p.effectiveTo} · chi trả về {p.payoutAccount}<br />
+              Miễn thường {money(p.deductible, p.currency)} · đồng chi trả {(p.coPaymentRate * 100).toFixed(0)}%
+              {p.waitingPeriodDays > 0 && ` · chờ ${p.waitingPeriodDays} ngày`}
             </div>
           </div>
         ))}
@@ -138,9 +140,9 @@ export function InsurancePage() {
           <div>
             <label>Sản phẩm</label>
             <select value={productCode} onChange={(e) => setProductCode(e.target.value)}>
-              <option value="HEALTH">Sức khoẻ</option>
-              <option value="MOTOR">Xe cơ giới</option>
-              <option value="LIFE">Nhân thọ</option>
+              <option value="HEALTH">Sức khoẻ (miễn thường 1tr · đồng chi trả 20% · chờ 30 ngày)</option>
+              <option value="MOTOR">Xe cơ giới (miễn thường 500k · đồng chi trả 10%)</option>
+              <option value="LIFE">Nhân thọ (chờ 365 ngày)</option>
             </select>
           </div>
           <div><label>Số tiền bảo hiểm</label><input type="number" min="1" value={coverage} onChange={(e) => setCoverage(e.target.value)} required /></div>
@@ -190,7 +192,16 @@ export function InsurancePage() {
                   <td className="mono">{c.policyNumber}</td>
                   <td style={{ textAlign: 'right' }}>{money(c.requestedAmount, c.currency)}</td>
                   <td style={{ textAlign: 'right' }}>
-                    {c.approvedAmount != null ? money(c.approvedAmount, c.currency) : '—'}
+                    {c.approvedAmount != null ? (
+                      <>
+                        <strong>{money(c.approvedAmount, c.currency)}</strong>
+                        {c.assessedCost != null && c.assessedCost !== c.approvedAmount && (
+                          <div className="muted" style={{ fontSize: '0.7rem' }}>
+                            công nhận {money(c.assessedCost, c.currency)}
+                          </div>
+                        )}
+                      </>
+                    ) : '—'}
                   </td>
                   <td>
                     <span className={CLAIM_TAG[c.status]}>{CLAIM_LABEL[c.status]}</span>

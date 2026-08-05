@@ -57,7 +57,8 @@ public sealed class EfInsuranceReadService(InsuranceDbContext db) : IInsuranceRe
     private static PolicyDto Map(Policy p) => new(
         p.Id, p.PolicyNumber, p.PolicyHolderId, p.ProductCode,
         p.CoverageAmount, p.ClaimedAmount, p.CoverageAmount - p.ClaimedAmount,
-        p.PremiumAmount, p.Currency, p.PayoutAccount,
+        p.PremiumAmount, p.Deductible, p.CoPaymentRate, p.WaitingPeriodDays,
+        p.Currency, p.PayoutAccount,
         p.Status.ToString(), p.EffectiveFrom, p.EffectiveTo);
 
     private static ClaimDto MapClaim(Claim c) => new(

@@ -224,3 +224,23 @@ public class InsurancePayoutRulesTests
         Assert.Equal(PolicyStatus.Active, p.Status);
     }
 }
+
+/// <summary>Hồi quy: số tiền chi trả phải là payable (sau miễn thường/đồng chi trả), KHÔNG phải chi phí công nhận.</summary>
+public class ClaimPayoutAmountTests
+{
+    [Fact]
+    public void ApprovedAmount_MustBePayable_NotAssessedCost()
+    {
+        var p = Policy.Issue("POL-1", "alice", "HEALTH", 100_000_000m, 2_000_000m, "ACC-1",
+            new DateOnly(2026, 1, 1), new DateOnly(2026, 12, 31), "VND",
+            deductible: 1_000_000m, coPaymentRate: 0.2m);
+        p.MarkPremiumCollected(Guid.NewGuid());
+
+        var c = Claim.Submit("CLM-1", p, "alice", 10_000_000m, new DateOnly(2026, 6, 1), "Nằm viện");
+        c.Approve("adjuster", 10_000_000m, p);
+
+        // Event chi trả phải dùng giá trị này — chi 10tr là chi thừa 2,8tr.
+        Assert.Equal(7_200_000m, c.ApprovedAmount);
+        Assert.NotEqual(c.AssessedCost, c.ApprovedAmount);
+    }
+}

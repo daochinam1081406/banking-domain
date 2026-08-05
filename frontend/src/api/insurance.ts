@@ -43,9 +43,10 @@ export const submitClaim = (input: {
   method: 'POST', body: JSON.stringify(input),
 })
 
-export const approveClaim = (claimId: string, approvedAmount: number) =>
+// assessedCost = chi phí giám định công nhận; BH thực trả = sau miễn thường + đồng chi trả
+export const approveClaim = (claimId: string, assessedCost: number) =>
   insuranceApi<void>(`/api/claims/${claimId}/approve`, {
-    method: 'POST', body: JSON.stringify({ approvedAmount }),
+    method: 'POST', body: JSON.stringify({ assessedCost }),
   })
 
 export const rejectClaim = (claimId: string, reason: string) =>

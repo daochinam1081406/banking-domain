@@ -3,7 +3,8 @@ namespace Insurance.Application;
 public sealed record PolicyDto(
     Guid Id, string PolicyNumber, string PolicyHolderId, string ProductCode,
     decimal CoverageAmount, decimal ClaimedAmount, decimal RemainingCoverage,
-    decimal PremiumAmount, string Currency, string PayoutAccount,
+    decimal PremiumAmount, decimal Deductible, decimal CoPaymentRate, int WaitingPeriodDays,
+    string Currency, string PayoutAccount,
     string Status, DateOnly EffectiveFrom, DateOnly EffectiveTo);
 
 public sealed record ClaimDto(

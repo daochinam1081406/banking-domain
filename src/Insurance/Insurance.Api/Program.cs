@@ -115,7 +115,7 @@ app.MapPost("/api/claims", async (
 app.MapPost("/api/claims/{id:guid}/approve", async (
     Guid id, ApproveClaimRequest req, ClaimsPrincipal user, InsuranceService svc, CancellationToken ct) =>
 {
-    await svc.ApproveClaimAsync(new ApproveClaimCommand(id, req.ApprovedAmount) { ReviewerId = user.Subject() }, ct);
+    await svc.ApproveClaimAsync(new ApproveClaimCommand(id, req.AssessedCost) { ReviewerId = user.Subject() }, ct);
     return Results.Accepted($"/api/claims/{id}", new { claimId = id, status = "Approved", payout = "processing" });
 }).RequireAuthorization("adjuster-only");
 
@@ -128,7 +128,8 @@ app.MapPost("/api/claims/{id:guid}/reject", async (
 
 app.Run();
 
-public sealed record ApproveClaimRequest(decimal ApprovedAmount);
+/// <summary>Chi phí giám định công nhận — số BH thực trả do hợp đồng quyết định.</summary>
+public sealed record ApproveClaimRequest(decimal AssessedCost);
 public sealed record PayPremiumRequest(string? DebitAccount);
 public sealed record RejectClaimRequest(string Reason);
 
