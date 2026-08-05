@@ -33,7 +33,6 @@ public sealed class Claim
     public Guid? PayoutTransferId { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
-    public byte[] RowVersion { get; private set; } = [];   // optimistic concurrency
 
     private Claim() { } // EF Core
 

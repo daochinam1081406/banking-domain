@@ -43,7 +43,13 @@ public sealed class InsuranceDbContext(DbContextOptions<InsuranceDbContext> opti
             e.Property(c => c.Status).HasConversion<string>().HasMaxLength(20);
             e.Property(c => c.ReviewerId).HasMaxLength(100);
             e.Property(c => c.DecisionReason).HasMaxLength(500);
-            e.Property(c => c.RowVersion).IsRowVersion();   // optimistic concurrency
+            // Postgres không có kiểu `rowversion` như SQL Server — dùng system column `xmin`
+            // làm concurrency token (shadow property, không cần cột thật trong bảng).
+            e.Property<uint>("xmin")
+                .HasColumnName("xmin")
+                .HasColumnType("xid")
+                .ValueGeneratedOnAddOrUpdate()
+                .IsConcurrencyToken();
         });
     }
 }

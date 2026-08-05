@@ -53,6 +53,8 @@ Mỗi feature PHẢI map về 1 dòng JD (xem bảng §2 trong CLAUDE.md). KHÔN
 - **`Paid` chỉ do saga đặt** (Payments báo chi trả xong), không phải user bấm; `MarkPaid` idempotent.
 - Từ chối KHÔNG trừ hạn mức.
 - **Mỗi luồng consumer phải có subscription RIÊNG** — dùng chung = competing consumers, message bị nuốt.
+- **Concurrency token:** SQL Server → `IsRowVersion()`; PostgreSQL → shadow property `xmin`
+  (`Property<uint>("xmin").HasColumnType("xid").IsConcurrencyToken()`). Dùng nhầm sẽ lỗi NOT NULL khi insert.
 
 ## Nghiệp vụ banking — BẮT BUỘC
 - **Ownership:** `Account.OwnerId` = JWT subject; mọi thao tác tiền kiểm tra `IsOwnedBy`. Đọc tài khoản
