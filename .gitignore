@@ -23,6 +23,7 @@ Thumbs.db
 docs/INTERVIEW-NOTES.md
 .github/workflows/
 
-# Tài liệu ngữ cảnh nội bộ cho trợ lý code — giữ ở máy, không đưa lên repo công khai.
+# Tài liệu nội bộ — giữ ở máy, không đưa lên repo công khai.
 CLAUDE.md
 .cursorrules
+docs/
