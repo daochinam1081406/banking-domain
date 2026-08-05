@@ -114,12 +114,11 @@ Integration test bắt đúng loại lỗi unit test không thấy: mapping `Dat
 Không có Docker → test **tự skip** thay vì fail.
 
 ## Tài liệu
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — sơ đồ component + sequence (Mermaid), nguyên tắc thiết kế
-- [`deploy/k8s/README.md`](deploy/k8s/README.md) — deploy AKS
-- [`docs/MONOLITH-TO-MICROSERVICES.md`](docs/MONOLITH-TO-MICROSERVICES.md) — strangler fig, khi nào tách, trade-off, bài học thật
-- `CLAUDE.md` / `.cursorrules` — brief cho AI assistant (quy tắc allinone)
+- [`deploy/k8s/README.md`](deploy/k8s/README.md) — deploy lên AKS
+- [`frontend/README.md`](frontend/README.md) — banking console (React + Vite + TS)
+- [`deploy/bench/run-bench.sh`](deploy/bench/run-bench.sh) — chạy lại toàn bộ số đo hiệu năng
 
-## Roadmap — tất cả DONE ✅
+## Roadmap
 - **Phase 1:** 2 service + Azure Service Bus pub/sub + emulator.
 - **Phase 2:** PostgreSQL (EF Core + Dapper), DDD + Clean Architecture, **Outbox**, JWT, **gRPC**, **Event Grid + Kafka** (IEventBus), Redis.
 - **Phase 3:** GitHub Actions CI + xUnit tests + Kubernetes manifests (AKS) + Application Insights.
