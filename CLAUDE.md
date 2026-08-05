@@ -37,6 +37,8 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | Clean Architecture + DDD | ✅ P2 | Domain/Application/Infra/Api, aggregate |
 | OAuth2 / OIDC / JWT | ✅ P2+ | **Login username/password thật** (PBKDF2-SHA256 600k) + role claim + refresh rotation & reuse detection |
 | **Chống brute-force** | ✅ | Login throttle trên **Redis** (theo tài khoản + theo IP) → 429 + `Retry-After` |
+| **Query optimization** | ✅ | Đo `EXPLAIN ANALYZE` trên **200k hợp đồng / 600k hồ sơ**: partial index cho hàng đợi giám định **461ms → 0,1ms**; chặn trên số dòng mọi endpoint danh sách. `docs/PERFORMANCE.md` |
+| **Scalability / performance** | ✅ | Load test: đọc **1.602 req/s** (p95 58ms) · ghi **364 req/s** (p95 131ms) · outbox **8 → ~1.600 sự kiện/s** sau khi gộp lô. Tiền bảo toàn sau 6.005 lệnh |
 | **Event versioning** | ✅ | `SchemaVersion` trong mọi message; consumer từ chối version lạ → dead-letter, không đoán mò |
 | **Phân quyền (RBAC)** | ✅ | `customer` vs `adjuster` — chỉ giám định viên duyệt/từ chối claim (segregation of duties) |
 | **Bancassurance** | ✅ | Thu phí trích nợ tài khoản NH (bank→insurer) + chi trả bồi thường (insurer→bank) |

@@ -16,11 +16,24 @@ namespace BuildingBlocks.Messaging;
 public interface IEventStreamPublisher
 {
     Task PublishAsync(string eventType, string jsonPayload, string key, CancellationToken ct = default);
+
+    /// <summary>
+    /// Đẩy cả lô. Mặc định lặp tuần tự; impl Kafka override để xếp hàng rồi Flush một lần
+    /// (librdkafka tự gộp thành ít request hơn) thay vì chờ delivery report của từng message.
+    /// </summary>
+    async Task PublishBatchAsync(IReadOnlyList<OutboxMessage> messages, CancellationToken ct = default)
+    {
+        foreach (var m in messages)
+            await PublishAsync(m.EventType, m.JsonPayload, m.MessageId, ct);
+    }
 }
 
 public sealed class NoOpEventStreamPublisher : IEventStreamPublisher
 {
     public Task PublishAsync(string eventType, string jsonPayload, string key, CancellationToken ct = default)
+        => Task.CompletedTask;
+
+    public Task PublishBatchAsync(IReadOnlyList<OutboxMessage> messages, CancellationToken ct = default)
         => Task.CompletedTask;
 }
 

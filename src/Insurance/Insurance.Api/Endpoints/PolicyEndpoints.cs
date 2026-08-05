@@ -21,8 +21,8 @@ public static class PolicyEndpoints
     }
 
     private static async Task<IResult> List(
-        ClaimsPrincipal user, IInsuranceReadService reads, CancellationToken ct)
-        => Results.Ok(await reads.ListPoliciesAsync(user.Subject(), ct));
+        ClaimsPrincipal user, IInsuranceReadService reads, CancellationToken ct, int? limit = null)
+        => Results.Ok(await reads.ListPoliciesAsync(user.Subject(), QueryLimits.Clamp(limit), ct));
 
     private static async Task<IResult> GetByNumber(
         string policyNumber, ClaimsPrincipal user, IInsuranceReadService reads, CancellationToken ct)

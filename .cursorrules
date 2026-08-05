@@ -47,6 +47,16 @@ Mỗi feature PHẢI map về 1 dòng JD (xem bảng §2 trong CLAUDE.md). KHÔN
 - **Resilience:** HTTP/gRPC client dùng `AddStandardResilienceHandler()` (Polly).
 - **Health check:** phải probe dependency thật (DB/Redis), không trả "healthy" cứng.
 
+## Hiệu năng — BẮT BUỘC
+- **Đo trước khi sửa**: `EXPLAIN (ANALYZE, BUFFERS)` trên dữ liệu lớn (`deploy/bench/`), không tối ưu theo trực giác.
+- Tạo index xong **phải đọc lại kế hoạch**: predicate ~40% bảng ⇒ planner bỏ qua index thường → dùng
+  **partial index** khớp ĐÚNG điều kiện `WHERE` trong code (lệch một chút là index vô dụng).
+- **Mọi endpoint danh sách phải có trần số dòng** (`QueryLimits`: 50 mặc định / 200 tối đa). Không limit = kéo cả bảng.
+- **Gộp lô ở ranh giới mạng**: KHÔNG await từng message. Service Bus `SendMessagesAsync`,
+  Kafka `Produce`+`Flush` một lần, outbox `UPDATE ... WHERE id = ANY(...)`.
+- **Đo cả nhịp tiêu thụ**, không chỉ throughput HTTP — vào > ra = hàng đợi phình âm thầm.
+- Số đo thật + phần chưa giải thích được: `docs/PERFORMANCE.md`.
+
 ## Contract versioning — BẮT BUỘC khi sửa integration event
 - Thêm field optional ⇒ giữ `SchemaVersion`; xoá/đổi tên/đổi kiểu/ngữ nghĩa ⇒ TĂNG version.
 - Breaking: publish song song 2 version → chờ consumer nâng cấp → bỏ version cũ.
@@ -125,7 +135,11 @@ Branch flow (giống allinone/D-Pro): `namdaoint` (dev chính, default) → `dev
 - **Ops:** Docker Compose (kèm SB emulator) · 11 k8s manifest + HPA · CI reference · App Insights (conditional).
 - **Bonus:** React FE (port 5174) · `docs/ARCHITECTURE.md` + `docs/MONOLITH-TO-MICROSERVICES.md`.
 - **Verified end-to-end** qua `docker compose`: transfer, saga chi trả claim, rate-limit 429, schema_version.
+- **Hiệu năng (đo 05/08/2026, `docs/PERFORMANCE.md`)**: đọc 1.602 req/s · ghi 364 req/s ·
+  partial index 461ms→0,1ms · outbox 8→~1.600 sự kiện/s · 6.005 lệnh: tiền bảo toàn, sổ cái cân, 0 lệnh kẹt.
 
 ## Giới hạn đã biết — nói thật khi được hỏi
-Chưa load test · chưa deploy cluster thật (manifest validate offline) · CI chưa chạy trên GitHub ·
-OTel chưa export ra backend · hạ tầng single-node · Event Grid publisher cần Azure thật.
+Chưa deploy cluster thật (manifest validate offline) · CI chưa chạy trên GitHub · OTel chưa export ra
+backend · hạ tầng single-node · Event Grid publisher cần Azure thật.
+Load test ĐÃ chạy nhưng chỉ trên máy dev/emulator: Service Bus emulator thỉnh thoảng stall ~13s (chưa
+kiểm chứng trên Azure thật); consumer ~14 msg/s — CHƯA tuning prefetch, có chủ ý, vì số đo bị emulator làm nhiễu.

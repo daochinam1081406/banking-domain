@@ -28,12 +28,15 @@ public static class ClaimEndpoints
         return app;
     }
 
-    /// <summary>Khách chỉ thấy hồ sơ của mình; giám định viên thấy toàn bộ hàng chờ.</summary>
+    /// <summary>Khách chỉ thấy hồ sơ của mình; giám định viên thấy hàng chờ cần xử lý.</summary>
     private static async Task<IResult> List(
-        ClaimsPrincipal user, IInsuranceReadService reads, CancellationToken ct)
-        => Results.Ok(user.IsInRole(Roles.Adjuster)
-            ? await reads.ListAllClaimsAsync(ct)
-            : await reads.ListClaimsAsync(user.Subject(), ct));
+        ClaimsPrincipal user, IInsuranceReadService reads, CancellationToken ct, int? limit = null)
+    {
+        var take = QueryLimits.Clamp(limit);
+        return Results.Ok(user.IsInRole(Roles.Adjuster)
+            ? await reads.ListPendingClaimsAsync(take, ct)
+            : await reads.ListClaimsAsync(user.Subject(), take, ct));
+    }
 
     private static async Task<IResult> GetById(
         Guid id, ClaimsPrincipal user, IInsuranceReadService reads, CancellationToken ct)

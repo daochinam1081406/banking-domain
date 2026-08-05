@@ -27,10 +27,12 @@ public sealed class EfClaimRepository(InsuranceDbContext db) : IClaimRepository
 
 public sealed class EfInsuranceReadService(InsuranceDbContext db) : IInsuranceReadService
 {
-    public async Task<IReadOnlyList<PolicyDto>> ListPoliciesAsync(string holderId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<PolicyDto>> ListPoliciesAsync(
+        string holderId, int limit = QueryLimits.DefaultPageSize, CancellationToken ct = default)
         => await db.Policies.AsNoTracking()
             .Where(p => p.PolicyHolderId == holderId)
             .OrderByDescending(p => p.UpdatedAt)
+            .Take(limit)
             .Select(p => Map(p)).ToListAsync(ct);
 
     public async Task<PolicyDto?> GetPolicyAsync(string policyNumber, CancellationToken ct = default)
@@ -40,15 +42,24 @@ public sealed class EfInsuranceReadService(InsuranceDbContext db) : IInsuranceRe
             .Where(p => p.PolicyNumber == number).Select(p => Map(p)).FirstOrDefaultAsync(ct);
     }
 
-    public async Task<IReadOnlyList<ClaimDto>> ListClaimsAsync(string claimantId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ClaimDto>> ListClaimsAsync(
+        string claimantId, int limit = QueryLimits.DefaultPageSize, CancellationToken ct = default)
         => await db.Claims.AsNoTracking()
             .Where(c => c.ClaimantId == claimantId)
             .OrderByDescending(c => c.CreatedAt)
+            .Take(limit)
             .Select(c => MapClaim(c)).ToListAsync(ct);
 
-    public async Task<IReadOnlyList<ClaimDto>> ListAllClaimsAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Điều kiện `Status IN (Submitted, UnderReview)` PHẢI khớp đúng filter của partial index
+    /// `IX_claims_PendingQueue`, nếu lệch thì Postgres không dùng được index và quay về Seq Scan.
+    /// </summary>
+    public async Task<IReadOnlyList<ClaimDto>> ListPendingClaimsAsync(
+        int limit = QueryLimits.DefaultPageSize, CancellationToken ct = default)
         => await db.Claims.AsNoTracking()
+            .Where(c => c.Status == ClaimStatus.Submitted || c.Status == ClaimStatus.UnderReview)
             .OrderByDescending(c => c.CreatedAt)
+            .Take(limit)
             .Select(c => MapClaim(c)).ToListAsync(ct);
 
     public async Task<ClaimDto?> GetClaimAsync(Guid claimId, CancellationToken ct = default)

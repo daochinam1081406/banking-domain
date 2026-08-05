@@ -13,13 +13,34 @@ public sealed record ClaimDto(
     DateOnly IncidentDate, string Description, string Status,
     string? ReviewerId, string? DecisionReason, Guid? PayoutTransferId, DateTimeOffset CreatedAt);
 
+/// <summary>
+/// Chặn trên số dòng mọi endpoint danh sách trả về. Không có chặn trên thì một client
+/// (hoặc một lỗi ở FE) có thể kéo cả bảng — đây là cách API danh sách làm sập DB thường gặp nhất.
+/// </summary>
+public static class QueryLimits
+{
+    public const int DefaultPageSize = 50;
+    public const int MaxPageSize = 200;
+
+    public static int Clamp(int? requested) =>
+        requested is null or < 1 ? DefaultPageSize : Math.Min(requested.Value, MaxPageSize);
+}
+
 public interface IInsuranceReadService
 {
-    Task<IReadOnlyList<PolicyDto>> ListPoliciesAsync(string holderId, CancellationToken ct = default);
+    Task<IReadOnlyList<PolicyDto>> ListPoliciesAsync(
+        string holderId, int limit = QueryLimits.DefaultPageSize, CancellationToken ct = default);
     Task<PolicyDto?> GetPolicyAsync(string policyNumber, CancellationToken ct = default);
-    Task<IReadOnlyList<ClaimDto>> ListClaimsAsync(string claimantId, CancellationToken ct = default);
-    /// <summary>Hàng chờ của giám định viên — toàn bộ hồ sơ.</summary>
-    Task<IReadOnlyList<ClaimDto>> ListAllClaimsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ClaimDto>> ListClaimsAsync(
+        string claimantId, int limit = QueryLimits.DefaultPageSize, CancellationToken ct = default);
+
+    /// <summary>
+    /// Hàng chờ giám định — CHỈ hồ sơ đang chờ xử lý, có phân trang.
+    /// Trước đây trả về **toàn bộ** bảng claims: 600k dòng, sort tràn 33MB ra đĩa, 461ms.
+    /// Giám định viên chỉ cần việc chưa xử lý, nên lọc + giới hạn là đúng nghiệp vụ, không phải cắt bớt tính năng.
+    /// </summary>
+    Task<IReadOnlyList<ClaimDto>> ListPendingClaimsAsync(
+        int limit = QueryLimits.DefaultPageSize, CancellationToken ct = default);
     Task<ClaimDto?> GetClaimAsync(Guid claimId, CancellationToken ct = default);
 }
 
