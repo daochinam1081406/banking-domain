@@ -1,4 +1,3 @@
-using BuildingBlocks.Messaging;
 
 namespace BuildingBlocks.Contracts;
 

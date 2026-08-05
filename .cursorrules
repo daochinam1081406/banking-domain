@@ -81,6 +81,16 @@ Mỗi feature PHẢI map về 1 dòng JD (xem bảng §2 trong CLAUDE.md). KHÔN
 - **Double-entry:** mỗi lệnh sinh đúng 2 `LedgerEntry` (Debit + Credit cùng `TransferId`) ⇒ tổng nợ = tổng có.
   Ledger bất biến = nguồn sự thật (sao kê/đối soát); `Balance` chỉ là giá trị chốt nhanh. Lệnh hỏng → KHÔNG ghi bút toán.
 
+## Ranh giới & tổ chức code
+- **`BuildingBlocks.Contracts`**: CHỈ integration event, **ZERO dependency**. Bỏ code hạ tầng vào đây
+  = sửa 1 dòng phải redeploy mọi service.
+- **`BuildingBlocks`**: infra dùng chung (Auth/Messaging/State/Observability/Http).
+- **Auth tập trung trong Payments** — quyết định có chủ đích (`docs/MONOLITH-TO-MICROSERVICES.md` §4b),
+  không phải bỏ sót. Service khác chỉ validate JWT.
+- **Endpoint PHẢI ở `Api/Endpoints/*Endpoints.cs`** (MapGroup); `Program.cs` chỉ wiring, KHÔNG nhét route.
+- **Test:** unit test cho domain; **integration test (Testcontainers)** cho thứ chỉ lộ ở tầng DB
+  (mapping kiểu dữ liệu, concurrency token, inbox PK, SKIP LOCKED).
+
 ## Cấu trúc (Clean Architecture per service — Phase 2)
 `X.Domain` (không phụ thuộc) → `X.Application` → `X.Infrastructure` (EF/Dapper, Outbox, consumer) → `X.Api`.
 Contract integration event dùng chung ở `BuildingBlocks/Contracts`.

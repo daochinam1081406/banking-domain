@@ -1,3 +1,4 @@
+using BuildingBlocks.Contracts;
 using BuildingBlocks.Messaging;
 using Payments.Domain;
 

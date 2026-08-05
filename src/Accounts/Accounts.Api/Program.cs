@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using System.Text;
 using Accounts.Api;
-using Accounts.Application;
+using Accounts.Api.Endpoints;
 using Accounts.Domain;
 using Accounts.Infrastructure;
 using BuildingBlocks.Auth;
@@ -13,11 +13,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.AddObservability("accounts-api");   // Serilog structured logs + OpenTelemetry tracing
+builder.AddObservability("accounts-api");
 builder.Services.AddAccountsInfrastructure(builder.Configuration);
 builder.Services.AddGrpc();
 
-// ── JWT auth (OAuth2/OIDC bearer) ────────────────────────────────
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
 builder.Services.AddSingleton(jwt);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -33,16 +32,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));   // FE React gọi cross-origin
+    p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
-// Application Insights — chỉ bật khi có connection string (không ảnh hưởng local/dev).
 if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
     builder.Services.AddApplicationInsightsTelemetry();
 
 var app = builder.Build();
-app.UseObservability();   // correlation id + request logging
+app.UseObservability();
 app.UseCors();
-app.UseDomainExceptionHandler();   // domain error → 400 ProblemDetails, không lộ stack trace
+app.UseDomainExceptionHandler();
 
 using (var scope = app.Services.CreateScope())
 {
@@ -60,24 +58,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGrpcService<AccountCheckService>();
-app.MapGet("/", () => "Accounts.Api — GET /api/accounts/{number} · gRPC AccountCheck");
-app.MapHealthChecks("/health");   // probe SQL Server (+ Redis) thật
-
-app.MapPost("/token", (TokenRequest req, JwtOptions opt) =>
-    Results.Ok(new { token = JwtTokenFactory.Issue(opt, req.Subject ?? "demo-user", req.Role ?? "customer") }));
-
-// Chỉ liệt kê tài khoản của chính người đăng nhập (JWT sub).
-app.MapGet("/api/accounts", async (ClaimsPrincipal user, IAccountReadService reads, CancellationToken ct) =>
-    Results.Ok(await reads.ListAsync(user.Subject(), ct))).RequireAuthorization();
-
-app.MapGet("/api/accounts/{number}", async (
-    string number, ClaimsPrincipal user, IAccountReadService reads, CancellationToken ct) =>
-{
-    var dto = await reads.GetByNumberAsync(number, ct);
-    if (dto is null) return Results.NotFound();
-    // Không lộ tài khoản người khác — trả 404 thay vì 403 để không tiết lộ tài khoản có tồn tại.
-    return dto.OwnerId == user.Subject() ? Results.Ok(dto) : Results.NotFound();
-}).RequireAuthorization();
+app.MapGet("/", () => "Accounts.Api — /api/accounts · gRPC AccountCheck");
+app.MapHealthChecks("/health");
+app.MapAccountEndpoints();
 
 // Azure Event Grid đẩy event vào đây (push model) — kèm xử lý validation handshake.
 app.MapEventGridWebhook("/webhooks/eventgrid", async (eventType, payload, ct) =>
@@ -88,44 +71,19 @@ app.MapEventGridWebhook("/webhooks/eventgrid", async (eventType, payload, ct) =>
     await db.SaveChangesAsync(ct);
 });
 
-// Audit trail dựng từ Kafka event stream (chứng minh consumer group hoạt động).
-app.MapGet("/api/audit", async (AccountsDbContext db, CancellationToken ct) =>
-    Results.Ok(await db.AuditEvents.AsNoTracking()
-        .OrderByDescending(a => a.ReceivedAt).Take(30)
-        .Select(a => new { a.EventType, a.CorrelationId, a.ReceivedAt })
-        .ToListAsync(ct))).RequireAuthorization();
-
-// Sao kê — bút toán bất biến của tài khoản (nguồn sự thật để đối soát).
-app.MapGet("/api/accounts/{number}/statement", async (
-    string number, ClaimsPrincipal user, IAccountReadService reads,
-    ILedgerRepository ledger, CancellationToken ct) =>
-{
-    var dto = await reads.GetByNumberAsync(number, ct);
-    if (dto is null || dto.OwnerId != user.Subject()) return Results.NotFound();
-    return Results.Ok(await ledger.GetStatementAsync(number, 50, ct));
-}).RequireAuthorization();
-
-app.MapPost("/api/accounts", async (
-    OpenAccountRequest req, ClaimsPrincipal user, IAccountRepository repo, CancellationToken ct) =>
-{
-    // Chủ sở hữu lấy từ JWT, không cho client tự khai.
-    var account = Account.Open(req.Number, user.Subject(), req.InitialBalance, req.Currency ?? "VND");
-    await repo.AddAsync(account, ct);
-    await repo.SaveChangesAsync(ct);
-    return Results.Created($"/api/accounts/{account.Number}",
-        new { account.Number, account.Balance, account.Currency });
-}).RequireAuthorization();
-
 app.Run();
 
-public sealed record OpenAccountRequest(string Number, decimal InitialBalance, string? Currency);
+/// <summary>Cho integration test truy cập entry point (WebApplicationFactory).</summary>
+public partial class Program;
 
-internal static class ClaimsPrincipalExtensions
+namespace Accounts.Api.Endpoints
 {
-    /// <summary>JWT subject = định danh người dùng, dùng làm chủ sở hữu tài khoản.</summary>
-    public static string Subject(this ClaimsPrincipal user)
-        => user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-        ?? user.FindFirst("sub")?.Value
-        ?? throw new InvalidOperationException("JWT thiếu subject.");
+    internal static class ClaimsPrincipalExtensions
+    {
+        /// <summary>JWT subject = định danh người dùng, dùng làm chủ sở hữu tài khoản.</summary>
+        public static string Subject(this ClaimsPrincipal user)
+            => user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? user.FindFirst("sub")?.Value
+            ?? throw new InvalidOperationException("JWT thiếu subject.");
+    }
 }
-public sealed record TokenRequest(string? Subject, string? Role);

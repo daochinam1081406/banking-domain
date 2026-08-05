@@ -1,3 +1,4 @@
+using BuildingBlocks.Contracts;
 using System.Text;
 using System.Text.Json;
 using BuildingBlocks.Observability;

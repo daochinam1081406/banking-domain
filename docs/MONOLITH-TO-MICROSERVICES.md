@@ -63,6 +63,27 @@ flowchart LR
   Ví dụ `Claim` và hạn mức `Policy` — cùng service Insurance, cùng transaction; nếu tách sẽ phải saga
   cho một thứ vốn dĩ nên nguyên tử.
 
+## 4b. Quyết định có chủ đích: Auth nằm trong Payments
+
+Hiện `Payments` sở hữu bảng `users` + `refresh_tokens` và là nơi duy nhất **phát** JWT; Accounts và
+Insurance chỉ *validate* token bằng chung secret. Nhìn qua thì đây là vi phạm bounded context —
+"Payments" mà lại quản lý identity.
+
+**Đây là đánh đổi cố ý, không phải bỏ sót.** Lý do:
+
+- Identity chưa có nhu cầu **scale hay deploy độc lập** — nó đổi rất chậm so với nghiệp vụ.
+- Tách sớm thành Identity service ⇒ thêm 1 service phải vận hành, thêm 1 hop mạng cho mọi login,
+  trong khi chưa giải quyết vấn đề gì có thật.
+- Ranh giới đã cô lập sẵn ở tầng code: toàn bộ logic auth nằm trong `BuildingBlocks/Auth`
+  (`User`, `TokenService`, `IUserStore`, `IRefreshTokenStore`); Payments chỉ cung cấp *implementation lưu trữ*.
+
+**Khi nào thì tách:** có SSO / nhiều client (mobile, đối tác), cần OAuth2 authorization server thật
+(authorization code + PKCE), hoặc compliance đòi cách ly dữ liệu định danh. Lúc đó thay
+`DapperUserStore` bằng gọi Identity service — **domain code không phải đổi**, đúng tinh thần
+strangler fig ở trên.
+
+> Nguyên tắc chung: tách service vì **nhu cầu vận hành**, không vì "cho đúng sơ đồ".
+
 ## 5. Cái giá phải trả (nói thẳng)
 
 | Được | Mất |

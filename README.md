@@ -93,9 +93,21 @@ async). JD không yêu cầu FE; làm để tường minh luồng nghiệp vụ.
 cd frontend && npm install && npm run dev   # http://localhost:5174
 ```
 
+## Test
+
+```bash
+dotnet test tests/BankingDomain.UnitTests          # 55 test — domain rules, thuần in-memory
+dotnet test tests/BankingDomain.IntegrationTests   # 8 test — PostgreSQL + SQL Server THẬT (Testcontainers)
+```
+
+Integration test bắt đúng loại lỗi unit test không thấy: mapping `DateTimeOffset` ↔ `timestamptz`,
+`RowVersion` chặn lost update, inbox dedup bằng PRIMARY KEY, `FOR UPDATE SKIP LOCKED`.
+Không có Docker → test **tự skip** thay vì fail.
+
 ## Tài liệu
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — sơ đồ component + sequence (Mermaid), nguyên tắc thiết kế
 - [`deploy/k8s/README.md`](deploy/k8s/README.md) — deploy AKS
+- [`docs/MONOLITH-TO-MICROSERVICES.md`](docs/MONOLITH-TO-MICROSERVICES.md) — strangler fig, khi nào tách, trade-off, bài học thật
 - `CLAUDE.md` / `.cursorrules` — brief cho AI assistant (quy tắc allinone)
 
 ## Roadmap — tất cả DONE ✅

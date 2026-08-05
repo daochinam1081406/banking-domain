@@ -23,5 +23,9 @@ jobs:
       - name: Build
         run: dotnet build BankingDomain.sln --configuration Release --no-restore
 
-      - name: Test
+      - name: Unit tests
         run: dotnet test tests/BankingDomain.UnitTests --configuration Release --no-build --verbosity normal
+
+      # Runner Linux của GitHub có Docker → Testcontainers chạy được DB thật.
+      - name: Integration tests (Testcontainers)
+        run: dotnet test tests/BankingDomain.IntegrationTests --configuration Release --no-build --verbosity normal

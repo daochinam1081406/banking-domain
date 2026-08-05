@@ -87,6 +87,16 @@ POST /api/transfers → Payments (PostgreSQL/Dapper) → [Outbox] → IEventBus
 
 ---
 
+## 4b. Ranh giới service & tổ chức code — quyết định có chủ đích
+
+- **`BuildingBlocks.Contracts`** = assembly **thuần khai báo, ZERO dependency** (chỉ integration event
+  + `IntegrationEvent`). KHÔNG bỏ code hạ tầng vào đây.
+- **`BuildingBlocks`** = infra dùng chung (Auth · Messaging · State · Observability · Http).
+  Tách 2 assembly để sửa hạ tầng **không buộc redeploy toàn bộ** service — đó là lợi ích chính của microservices.
+- **Auth tập trung trong Payments** (`users`/`refresh_tokens`, phát JWT; service khác chỉ validate).
+  Cố ý, không phải bỏ sót — lý do + điều kiện tách ở `docs/MONOLITH-TO-MICROSERVICES.md` §4b.
+- **Endpoint PHẢI tách ra `Api/Endpoints/*Endpoints.cs`** (mẫu MapGroup); `Program.cs` chỉ wiring.
+
 ## 5. Cấu trúc thư mục
 
 ```

@@ -1,3 +1,4 @@
+using BuildingBlocks.Contracts;
 using System.Text.Json;
 using Azure;
 using Azure.Messaging.EventGrid;
