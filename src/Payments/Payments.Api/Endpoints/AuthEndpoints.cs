@@ -21,8 +21,30 @@ public static class AuthEndpoints
         return app;
     }
 
-    private static async Task<IResult> Login(LoginRequest req, TokenService tokens, CancellationToken ct)
-        => Results.Ok(await tokens.LoginAsync(req.Username, req.Password, ct));
+    private static async Task<IResult> Login(
+        LoginRequest req, HttpContext ctx, TokenService tokens, CancellationToken ct)
+    {
+        try
+        {
+            return Results.Ok(await tokens.LoginAsync(req.Username, req.Password, ClientIp(ctx), ct));
+        }
+        catch (TooManyLoginAttemptsException ex)
+        {
+            // 429 + Retry-After để client biết chờ bao lâu (chuẩn HTTP).
+            ctx.Response.Headers.RetryAfter = ((int)ex.RetryAfter.TotalSeconds).ToString();
+            return Results.Json(new { errorCode = ex.ErrorCode, detail = ex.Message },
+                statusCode: StatusCodes.Status429TooManyRequests);
+        }
+    }
+
+    /// <summary>Sau reverse proxy/ingress, IP thật nằm ở X-Forwarded-For (phần tử đầu).</summary>
+    private static string? ClientIp(HttpContext ctx)
+    {
+        var forwarded = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        return string.IsNullOrWhiteSpace(forwarded)
+            ? ctx.Connection.RemoteIpAddress?.ToString()
+            : forwarded.Split(',')[0].Trim();
+    }
 
     private static async Task<IResult> Refresh(RefreshRequest req, TokenService tokens, CancellationToken ct)
         => Results.Ok(await tokens.RefreshAsync(req.RefreshToken, ct));

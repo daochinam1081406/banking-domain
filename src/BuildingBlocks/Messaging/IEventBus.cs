@@ -11,5 +11,6 @@ public interface IEventBus
     Task PublishAsync<T>(T @event, CancellationToken ct = default) where T : IntegrationEvent;
 
     /// <summary>Publish payload đã serialize sẵn (dùng bởi OutboxPublisher — payload lấy từ outbox table).</summary>
-    Task PublishRawAsync(string eventType, string jsonPayload, string messageId, CancellationToken ct = default);
+    Task PublishRawAsync(string eventType, string jsonPayload, string messageId,
+        int schemaVersion = 1, CancellationToken ct = default);
 }

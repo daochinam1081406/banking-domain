@@ -92,12 +92,15 @@ public static class StateExtensions
         {
             services.AddSingleton<IIdempotencyStore, NoOpIdempotencyStore>();
             services.AddSingleton<IDistributedLock, NoOpDistributedLock>();
+            services.AddSingleton<BuildingBlocks.Auth.ILoginThrottle, BuildingBlocks.Auth.NoOpLoginThrottle>();
             return services;
         }
 
         services.TryAddRedis(conn);
         services.AddSingleton<IIdempotencyStore, RedisIdempotencyStore>();
         services.AddSingleton<IDistributedLock, RedisDistributedLock>();
+        services.AddSingleton(new BuildingBlocks.Auth.LoginThrottleOptions());
+        services.AddSingleton<BuildingBlocks.Auth.ILoginThrottle, BuildingBlocks.Auth.RedisLoginThrottle>();
         return services;
     }
 

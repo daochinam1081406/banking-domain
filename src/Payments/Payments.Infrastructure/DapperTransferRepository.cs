@@ -31,8 +31,8 @@ public sealed class DapperTransferRepository(NpgsqlDataSource dataSource) : ITra
 
         await conn.ExecuteAsync(new CommandDefinition(
             """
-            INSERT INTO outbox (id, event_type, payload, status, created_at, correlation_id)
-            VALUES (@Id, @EventType, @Payload::jsonb, 'PENDING', NOW(), @CorrelationId)
+            INSERT INTO outbox (id, event_type, payload, status, created_at, correlation_id, schema_version)
+            VALUES (@Id, @EventType, @Payload::jsonb, 'PENDING', NOW(), @CorrelationId, @SchemaVersion)
             """,
             new
             {
@@ -40,6 +40,7 @@ public sealed class DapperTransferRepository(NpgsqlDataSource dataSource) : ITra
                 integrationEvent.EventType,
                 Payload = JsonSerializer.Serialize(integrationEvent, integrationEvent.GetType()),
                 CorrelationId = CorrelationContext.GetOrCreate(),   // giữ lại để publisher (thread nền) khôi phục
+                integrationEvent.SchemaVersion,
             }, tx, cancellationToken: ct));
 
         await tx.CommitAsync(ct);

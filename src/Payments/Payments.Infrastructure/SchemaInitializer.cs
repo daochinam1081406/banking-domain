@@ -32,6 +32,7 @@ public static class SchemaInitializer
         );
 
         ALTER TABLE outbox ADD COLUMN IF NOT EXISTS correlation_id VARCHAR(64);
+        ALTER TABLE outbox ADD COLUMN IF NOT EXISTS schema_version INT NOT NULL DEFAULT 1;
 
         -- Refresh token: chỉ lưu SHA-256 hash; family_id nhóm token cùng phiên (reuse detection)
         CREATE TABLE IF NOT EXISTS refresh_tokens (

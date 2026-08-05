@@ -30,19 +30,27 @@ public sealed class TokenService(
     JwtOptions jwtOptions,
     IRefreshTokenStore store,
     IUserStore users,
+    ILoginThrottle throttle,
     ILogger<TokenService> logger)
 {
-    /// <summary>Xác thực username/password thật (PBKDF2) rồi mới cấp token.</summary>
-    public async Task<TokenPair> LoginAsync(string username, string password, CancellationToken ct = default)
+    /// <summary>Xác thực username/password (PBKDF2), có chống brute-force theo tài khoản + IP.</summary>
+    public async Task<TokenPair> LoginAsync(
+        string username, string password, string? ipAddress = null, CancellationToken ct = default)
     {
+        // Kiểm tra khoá TRƯỚC khi tra DB/băm mật khẩu — vừa chặn sớm, vừa không tốn CPU cho attacker.
+        await throttle.EnsureNotLockedAsync(username, ipAddress, ct);
+
         var user = await users.FindAsync(username, ct);
 
         // Cùng một thông báo cho "sai user" và "sai mật khẩu" — không tiết lộ user nào tồn tại.
         if (user is null || !user.IsActive || !user.VerifyPassword(password))
         {
+            await throttle.RecordFailureAsync(username, ipAddress, ct);
             logger.LogWarning("Đăng nhập thất bại cho {Username}", username);
             throw new InvalidCredentialsException("Tên đăng nhập hoặc mật khẩu không đúng.");
         }
+
+        await throttle.ResetAsync(username, ct);
 
         var (entity, raw) = RefreshToken.Issue(user.Username, RefreshToken.NewFamilyId());
         await store.AddAsync(entity, ct);

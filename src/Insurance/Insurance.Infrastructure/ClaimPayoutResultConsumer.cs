@@ -49,6 +49,21 @@ public sealed class ClaimPayoutResultConsumer(
             [CorrelationContext.LogPropertyName] = CorrelationContext.Id ?? "-",
         });
 
+
+        // Contract versioning: schema lạ (do publisher đã nâng cấp trước) thì DỪNG, không đoán mò —
+        // đoán sai trên dữ liệu tiền bạc tệ hơn nhiều so với việc dead-letter và cảnh báo.
+        var schemaVersion = args.Message.ApplicationProperties
+            .TryGetValue(SchemaCompatibility.MessagePropertyName, out var sv) && sv is not null
+                ? Convert.ToInt32(sv) : 1;
+        if (!SchemaCompatibility.IsSupported(schemaVersion))
+        {
+            logger.LogError("Message {MessageId} dùng schema v{Version} — dead-letter",
+                args.Message.MessageId, schemaVersion);
+            await args.DeadLetterMessageAsync(args.Message, "UnsupportedSchemaVersion",
+                SchemaCompatibility.Reason(schemaVersion));
+            return;
+        }
+
         try
         {
             await using var scope = scopeFactory.CreateAsyncScope();

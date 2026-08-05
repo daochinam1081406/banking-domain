@@ -29,10 +29,12 @@ public sealed class AzureServiceBusEventBus : IEventBus, IAsyncDisposable
             @event.EventType,
             JsonSerializer.Serialize(@event, @event.GetType()),
             @event.EventId.ToString(),
+            @event.SchemaVersion,
             ct);
 
     public async Task PublishRawAsync(
-        string eventType, string jsonPayload, string messageId, CancellationToken ct = default)
+        string eventType, string jsonPayload, string messageId,
+        int schemaVersion = 1, CancellationToken ct = default)
     {
         var correlationId = CorrelationContext.GetOrCreate();
         var message = new ServiceBusMessage(jsonPayload)
@@ -43,6 +45,7 @@ public sealed class AzureServiceBusEventBus : IEventBus, IAsyncDisposable
             ContentType   = "application/json",
         };
         message.ApplicationProperties[CorrelationContext.MessagePropertyName] = correlationId;
+        message.ApplicationProperties[SchemaCompatibility.MessagePropertyName] = schemaVersion;
 
         await _sender.SendMessageAsync(message, ct);
         _logger.LogInformation("Published {EventType} {MessageId} → Service Bus (corr {CorrelationId})",

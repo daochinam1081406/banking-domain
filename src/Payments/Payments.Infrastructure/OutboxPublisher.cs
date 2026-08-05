@@ -18,7 +18,7 @@ public sealed class OutboxPublisher(
     IEventStreamPublisher eventStream,
     ILogger<OutboxPublisher> logger) : BackgroundService
 {
-    private sealed record OutboxRow(Guid Id, string EventType, string Payload, string? CorrelationId);
+    private sealed record OutboxRow(Guid Id, string EventType, string Payload, string? CorrelationId, int? SchemaVersion);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -37,7 +37,8 @@ public sealed class OutboxPublisher(
 
         var rows = (await conn.QueryAsync<OutboxRow>(new CommandDefinition(
             """
-            SELECT id AS Id, event_type AS EventType, payload AS Payload, correlation_id AS CorrelationId
+            SELECT id AS Id, event_type AS EventType, payload AS Payload, correlation_id AS CorrelationId,
+                   schema_version AS SchemaVersion
             FROM outbox
             WHERE status = 'PENDING'
             ORDER BY created_at
@@ -53,7 +54,7 @@ public sealed class OutboxPublisher(
             {
                 [CorrelationContext.LogPropertyName] = CorrelationContext.Id ?? "-",
             });
-            await eventBus.PublishRawAsync(row.EventType, row.Payload, row.Id.ToString(), ct);
+            await eventBus.PublishRawAsync(row.EventType, row.Payload, row.Id.ToString(), row.SchemaVersion ?? 1, ct);
 
             // Song song: đẩy sang Kafka làm event stream (audit/analytics, replay được).
             // Service Bus lo giao dịch/saga; Kafka lo streaming — hai vai trò khác nhau.

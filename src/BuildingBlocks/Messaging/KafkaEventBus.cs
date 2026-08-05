@@ -39,9 +39,11 @@ public sealed class KafkaEventBus : IEventBus, IDisposable
 
     public Task PublishAsync<T>(T @event, CancellationToken ct = default) where T : IntegrationEvent
         => PublishRawAsync(@event.EventType,
-            JsonSerializer.Serialize(@event, @event.GetType()), @event.EventId.ToString(), ct);
+            JsonSerializer.Serialize(@event, @event.GetType()), @event.EventId.ToString(),
+            @event.SchemaVersion, ct);
 
-    public async Task PublishRawAsync(string eventType, string jsonPayload, string messageId, CancellationToken ct = default)
+    public async Task PublishRawAsync(string eventType, string jsonPayload, string messageId,
+        int schemaVersion = 1, CancellationToken ct = default)
     {
         var message = new Message<string, string>
         {
@@ -51,6 +53,7 @@ public sealed class KafkaEventBus : IEventBus, IDisposable
             {
                 { "eventType", Encoding.UTF8.GetBytes(eventType) },
                 { CorrelationContext.MessagePropertyName, Encoding.UTF8.GetBytes(CorrelationContext.GetOrCreate()) },
+                { SchemaCompatibility.MessagePropertyName, Encoding.UTF8.GetBytes(schemaVersion.ToString()) },
             },
         };
         var result = await _producer.ProduceAsync(_topic, message, ct);

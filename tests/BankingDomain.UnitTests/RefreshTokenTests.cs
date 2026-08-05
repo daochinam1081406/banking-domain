@@ -43,7 +43,7 @@ public class RefreshTokenTests
         var store = new InMemoryRefreshTokenStore();
         var jwt = new JwtOptions { Secret = new string('k', 48), ExpiryMinutes = 30 };
         var users = new InMemoryUserStore(User.Create("alice", "Alice@123", Roles.Customer, "Alice"));
-        return (new TokenService(jwt, store, users, NullLogger<TokenService>.Instance), store);
+        return (new TokenService(jwt, store, users, new NoOpLoginThrottle(), NullLogger<TokenService>.Instance), store);
     }
 
     [Fact]

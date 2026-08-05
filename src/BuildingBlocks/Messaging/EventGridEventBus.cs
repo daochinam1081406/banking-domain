@@ -32,14 +32,16 @@ public sealed class EventGridEventBus : IEventBus
 
     public Task PublishAsync<T>(T @event, CancellationToken ct = default) where T : IntegrationEvent
         => PublishRawAsync(@event.EventType,
-            JsonSerializer.Serialize(@event, @event.GetType()), @event.EventId.ToString(), ct);
+            JsonSerializer.Serialize(@event, @event.GetType()), @event.EventId.ToString(),
+            @event.SchemaVersion, ct);
 
-    public async Task PublishRawAsync(string eventType, string jsonPayload, string messageId, CancellationToken ct = default)
+    public async Task PublishRawAsync(string eventType, string jsonPayload, string messageId,
+        int schemaVersion = 1, CancellationToken ct = default)
     {
         var egEvent = new EventGridEvent(
             subject: $"banking/{eventType}",
             eventType: eventType,
-            dataVersion: "1.0",
+            dataVersion: $"{schemaVersion}.0",
             data: BinaryData.FromString(jsonPayload))
         {
             Id = messageId,

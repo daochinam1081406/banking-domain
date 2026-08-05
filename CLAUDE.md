@@ -36,6 +36,8 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | RESTful API + **gRPC** | ✅ P2 | Minimal API + gRPC AccountCheck (Payments→Accounts sync) |
 | Clean Architecture + DDD | ✅ P2 | Domain/Application/Infra/Api, aggregate |
 | OAuth2 / OIDC / JWT | ✅ P2+ | **Login username/password thật** (PBKDF2-SHA256 600k) + role claim + refresh rotation & reuse detection |
+| **Chống brute-force** | ✅ | Login throttle trên **Redis** (theo tài khoản + theo IP) → 429 + `Retry-After` |
+| **Event versioning** | ✅ | `SchemaVersion` trong mọi message; consumer từ chối version lạ → dead-letter, không đoán mò |
 | **Phân quyền (RBAC)** | ✅ | `customer` vs `adjuster` — chỉ giám định viên duyệt/từ chối claim (segregation of duties) |
 | **Bancassurance** | ✅ | Thu phí trích nợ tài khoản NH (bank→insurer) + chi trả bồi thường (insurer→bank) |
 | Observability | ✅ | **Correlation ID** xuyên HTTP→gRPC→outbox→message→consumer · Serilog structured · OpenTelemetry tracing |

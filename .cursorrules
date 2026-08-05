@@ -47,6 +47,15 @@ Mỗi feature PHẢI map về 1 dòng JD (xem bảng §2 trong CLAUDE.md). KHÔN
 - **Resilience:** HTTP/gRPC client dùng `AddStandardResilienceHandler()` (Polly).
 - **Health check:** phải probe dependency thật (DB/Redis), không trả "healthy" cứng.
 
+## Contract versioning — BẮT BUỘC khi sửa integration event
+- Thêm field optional ⇒ giữ `SchemaVersion`; xoá/đổi tên/đổi kiểu/ngữ nghĩa ⇒ TĂNG version.
+- Breaking: publish song song 2 version → chờ consumer nâng cấp → bỏ version cũ.
+- Consumer gặp version lạ ⇒ dead-letter kèm lý do, KHÔNG đoán mò (sai trên dữ liệu tiền tệ hơn dừng).
+
+## Chống brute-force đăng nhập
+- Throttle trên **Redis** (không in-memory), đếm **theo tài khoản + theo IP**, đếm cả user không tồn tại.
+- Chặn trước khi băm mật khẩu; trả **429 + Retry-After**; login đúng → reset counter tài khoản.
+
 ## Redis state management — BẮT BUỘC cho API tiền
 - **Idempotency-Key** cho mọi POST tạo giao dịch (chuẩn Stripe): cache response theo key, replay lại
   khi client retry; đang xử lý dở + request trùng → 409. Redis vì state dùng chung giữa các instance.
