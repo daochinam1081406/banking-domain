@@ -6,6 +6,7 @@ using Accounts.Domain;
 using Accounts.Infrastructure;
 using BuildingBlocks.Auth;
 using BuildingBlocks.Http;
+using BuildingBlocks.Messaging;
 using BuildingBlocks.Observability;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -77,6 +78,15 @@ app.MapGet("/api/accounts/{number}", async (
     // Không lộ tài khoản người khác — trả 404 thay vì 403 để không tiết lộ tài khoản có tồn tại.
     return dto.OwnerId == user.Subject() ? Results.Ok(dto) : Results.NotFound();
 }).RequireAuthorization();
+
+// Azure Event Grid đẩy event vào đây (push model) — kèm xử lý validation handshake.
+app.MapEventGridWebhook("/webhooks/eventgrid", async (eventType, payload, ct) =>
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AccountsDbContext>();
+    db.AuditEvents.Add(AuditEvent.From($"EventGrid:{eventType}", payload, null));
+    await db.SaveChangesAsync(ct);
+});
 
 // Audit trail dựng từ Kafka event stream (chứng minh consumer group hoạt động).
 app.MapGet("/api/audit", async (AccountsDbContext db, CancellationToken ct) =>

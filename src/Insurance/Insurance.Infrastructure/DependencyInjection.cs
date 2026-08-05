@@ -1,4 +1,5 @@
 using BuildingBlocks.Messaging;
+using BuildingBlocks.State;
 using Insurance.Application;
 using Insurance.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<InsuranceService>();
 
         services.AddEventBus(config);
+        services.AddRedisState(config);   // distributed lock chống duyệt trùng
         services.AddHostedService<ClaimPayoutResultConsumer>();
 
         services.AddHealthChecks().AddDbContextCheck<InsuranceDbContext>("postgres");

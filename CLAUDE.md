@@ -27,9 +27,9 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | **SQL Server** (data modeling) | ✅ P2 | Accounts + EF Core + migration |
 | **PostgreSQL** (query optimization) | ✅ P2 | Payments + Dapper raw SQL |
 | **Outbox pattern** | ✅ P2 | Payments: transfer + outbox 1 tx → publisher |
-| Redis | ✅ P2 | cache-aside số dư (Accounts) + invalidate khi transfer |
+| Redis | ✅ | cache-aside số dư · **state management**: Idempotency-Key (chống giao dịch trùng) + distributed lock (chống duyệt claim trùng) |
 | **Azure Service Bus** | ✅ P1 | `AzureServiceBusEventBus` |
-| **Azure Event Grid** | ✅ P2 | `EventGridEventBus` (chọn qua `Messaging:Provider`) |
+| **Azure Event Grid** | ✅ | Publisher + **webhook receiver** (push model) kèm SubscriptionValidation handshake — verified local |
 | **Kafka** | ✅ | **Producer + Consumer thật đang chạy**: dual-publish (SB cho saga, Kafka cho stream), `KafkaConsumerBase` — consumer group, 3 partitions, manual offset commit; audit trail dựng từ stream |
 | Microservices architecture | ✅ | 2 service tách, **DB-per-service** (SQL Server + Postgres) |
 | Event-driven architecture | ✅ | integration events qua broker + Outbox |
@@ -41,7 +41,8 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | Observability | ✅ | **Correlation ID** xuyên HTTP→gRPC→outbox→message→consumer · Serilog structured · OpenTelemetry tracing |
 | Resilience | ✅ | Polly `AddStandardResilienceHandler` trên gRPC client (retry + circuit breaker + timeout) |
 | Docker | ✅ | Dockerfile + compose |
-| CI/CD, Kubernetes, App Insights | ✅ P3 | GitHub Actions CI + k8s/AKS manifests + App Insights (conditional) |
+| CI/CD, Kubernetes, App Insights | ✅ | CI + **11 k8s manifest** (3 Deployment/Service + **HPA** + ConfigMap/Secret), validate offline OK + App Insights |
+| Migrate monolith→microservices | ✅ | `docs/MONOLITH-TO-MICROSERVICES.md` — strangler fig, khi nào tách, cái giá phải trả, bài học thật |
 | Unit tests | ✅ P3 | xUnit 12 tests (Account overdraft, Transfer rules) |
 | Frontend (bonus — JD không yêu cầu) | ✅ | React+Vite+TS `frontend/` — Login (JWT), Dashboard (tài khoản của mình + **sao kê bút toán kép**), Chuyển tiền (event-driven async) |
 | Docs | ✅ | ARCHITECTURE.md (Mermaid), k8s README, frontend README, CLAUDE.md + .cursorrules |

@@ -3,6 +3,7 @@ using System.Text;
 using BuildingBlocks.Auth;
 using BuildingBlocks.Http;
 using BuildingBlocks.Observability;
+using BuildingBlocks.State;
 using Insurance.Application;
 using Insurance.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -113,8 +114,14 @@ app.MapPost("/api/claims", async (
 
 // Giám định viên duyệt → phát ClaimApproved → Payments chi trả (saga xuyên service)
 app.MapPost("/api/claims/{id:guid}/approve", async (
-    Guid id, ApproveClaimRequest req, ClaimsPrincipal user, InsuranceService svc, CancellationToken ct) =>
+    Guid id, ApproveClaimRequest req, ClaimsPrincipal user, InsuranceService svc,
+    IDistributedLock locks, CancellationToken ct) =>
 {
+    // Khoá theo claim: 2 giám định viên bấm duyệt cùng lúc → chỉ 1 người qua, người kia nhận 409.
+    await using var lease = await locks.AcquireAsync($"claim:{id}", TimeSpan.FromSeconds(30), ct);
+    if (lease is null)
+        return Results.Conflict(new { errorCode = "CLAIM_LOCKED", detail = "Hồ sơ đang được xử lý bởi người khác." });
+
     await svc.ApproveClaimAsync(new ApproveClaimCommand(id, req.AssessedCost) { ReviewerId = user.Subject() }, ct);
     return Results.Accepted($"/api/claims/{id}", new { claimId = id, status = "Approved", payout = "processing" });
 }).RequireAuthorization("adjuster-only");

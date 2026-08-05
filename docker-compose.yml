@@ -76,6 +76,7 @@ services:
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ServiceBus__TopicName: "banking-events"
       ServiceBus__SubscriptionName: "payments-subscription"
+      ConnectionStrings__Redis: "redis:6379"
       Kafka__BootstrapServers: "kafka:9092"
       Kafka__Topic: "banking.events"
       Insurer__PayoutFromAccount: "INS-FUND"
@@ -111,10 +112,12 @@ services:
     depends_on:
       - servicebus-emulator
       - postgres
+      - redis
     environment:
       ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=insurance;Username=postgres;Password=postgres"
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ServiceBus__TopicName: "banking-events"
       ServiceBus__SubscriptionName: "insurance-subscription"
+      ConnectionStrings__Redis: "redis:6379"
     ports:
       - "8083:8080"

@@ -1,6 +1,7 @@
 using Accounts.Application;
 using Accounts.Domain;
 using BuildingBlocks.Messaging;
+using BuildingBlocks.State;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,6 +40,7 @@ public static class DependencyInjection
             services.AddSingleton<IAccountCacheInvalidator, NoOpAccountCacheInvalidator>();
         }
 
+        services.AddRedisState(config);
         services.AddEventBus(config);                    // publish saga result events về Payments
         services.AddHostedService<MoneyTransferConsumer>();
 

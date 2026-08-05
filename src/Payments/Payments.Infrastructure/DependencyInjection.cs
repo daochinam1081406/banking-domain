@@ -1,5 +1,6 @@
 using BuildingBlocks.Auth;
 using BuildingBlocks.Messaging;
+using BuildingBlocks.State;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -35,6 +36,7 @@ public static class DependencyInjection
 
         services.AddEventBus(config);                          // IEventBus: ServiceBus | EventGrid | Kafka
         services.AddKafkaEventStream(config);                  // stream song song sang Kafka
+        services.AddRedisState(config);                        // Redis: idempotency + distributed lock
         services.AddHostedService<OutboxPublisher>();          // outbox → broker đã chọn
         services.AddHostedService<TransferResultConsumer>();   // saga: nhận kết quả từ Accounts
         services.Configure<InsurerAccountOptions>(config.GetSection("Insurer"));

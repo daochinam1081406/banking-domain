@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text;
 using BuildingBlocks.Auth;
 using BuildingBlocks.Http;
+using BuildingBlocks.State;
 using BuildingBlocks.Observability;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -40,6 +41,7 @@ var app = builder.Build();
 app.UseObservability();   // correlation id + request logging
 app.UseCors();
 app.UseDomainExceptionHandler();   // domain error → 400 ProblemDetails
+app.UseIdempotency();              // Idempotency-Key → chống tạo giao dịch trùng khi client retry
 
 using (var scope = app.Services.CreateScope())
 {

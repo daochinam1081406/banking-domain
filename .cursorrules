@@ -47,6 +47,11 @@ Mỗi feature PHẢI map về 1 dòng JD (xem bảng §2 trong CLAUDE.md). KHÔN
 - **Resilience:** HTTP/gRPC client dùng `AddStandardResilienceHandler()` (Polly).
 - **Health check:** phải probe dependency thật (DB/Redis), không trả "healthy" cứng.
 
+## Redis state management — BẮT BUỘC cho API tiền
+- **Idempotency-Key** cho mọi POST tạo giao dịch (chuẩn Stripe): cache response theo key, replay lại
+  khi client retry; đang xử lý dở + request trùng → 409. Redis vì state dùng chung giữa các instance.
+- **Distributed lock** (SET NX + Lua release theo token, có TTL) chống xử lý trùng 1 thực thể.
+
 ## Hai broker song song — dùng đúng vai trò
 - **Service Bus** = giao dịch/saga (DLQ, ordering, retry). **Kafka** = event streaming (audit/analytics, replay được).
 - `IEventBus` (SB) tách khỏi `IEventStreamPublisher` (Kafka); Outbox publish cả hai. Kafka lỗi = best-effort,
@@ -94,6 +99,7 @@ Branch flow (giống allinone/D-Pro): `namdaoint` (dev chính, default) → `dev
   JWT + gRPC (h2c port 8090) + Event Grid + Kafka (`Messaging:Provider`) + Redis cache-aside.
 - **P3:** GitHub Actions CI (file ở `deploy/ci/ci.yml.reference`) + xUnit **18 tests** + k8s/AKS manifests
   + Application Insights (conditional).
+- **Docs:** `docs/MONOLITH-TO-MICROSERVICES.md` (strangler fig, trade-off, bài học thật).
 - **Bonus:** React FE (`frontend/`, port 5174 — dashboard theo owner + **UI sao kê** bút toán kép, chuyển tiền) + `docs/ARCHITECTURE.md` (Mermaid).
 - **Reliability hardening:** inbox `processed_messages` (idempotent thật), `RowVersion` optimistic
   concurrency, saga `TransferCompleted`/`TransferFailed` đóng trạng thái, ProblemDetails, health check thật.

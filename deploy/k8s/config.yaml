@@ -8,6 +8,9 @@ data:
   ServiceBus__TopicName: "banking-events"
   ServiceBus__SubscriptionName: "accounts-subscription"
   Grpc__AccountsUrl: "http://accounts-svc:8090"
+  Kafka__BootstrapServers: "<eventhubs-namespace>.servicebus.windows.net:9093"   # Event Hubs Kafka-compatible
+  Kafka__Topic: "banking.events"
+  Kafka__ConsumerGroup: "audit-service"
 ---
 # Secrets — production: dùng Azure Key Vault (CSI driver) thay vì commit giá trị thật.
 # Ở đây để placeholder; connection string trỏ managed services (Azure SQL, Azure Cache for Redis,
@@ -22,6 +25,8 @@ stringData:
   ConnectionStrings__SqlServer: "Server=<azure-sql>;Database=accounts;User Id=<u>;Password=<REPLACE>;Encrypt=true;"
   ConnectionStrings__Postgres: "Host=<azure-pg>;Database=payments;Username=<u>;Password=<REPLACE>;SSL Mode=Require;"
   ConnectionStrings__Redis: "<azure-redis>:6380,password=<REPLACE>,ssl=True"
+  # Kafka trên Azure: dùng Event Hubs (giao thức Kafka) — không tự vận hành broker trong cluster
+  Kafka__SaslPassword: "Endpoint=sb://<ns>.servicebus.windows.net/;SharedAccessKeyName=<k>;SharedAccessKey=<REPLACE>"
   ServiceBus__ConnectionString: "Endpoint=sb://<ns>.servicebus.windows.net/;SharedAccessKeyName=<k>;SharedAccessKey=<REPLACE>"
   Jwt__Secret: "<REPLACE-256bit-secret>"
   APPLICATIONINSIGHTS_CONNECTION_STRING: "<REPLACE-appinsights-conn>"
