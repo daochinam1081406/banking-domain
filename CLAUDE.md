@@ -31,7 +31,7 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | **Azure Service Bus** | ✅ P1 | `AzureServiceBusEventBus` |
 | **Azure Event Grid** | ✅ | Publisher + **webhook receiver** (push model) kèm SubscriptionValidation handshake — verified local |
 | **Kafka** | ✅ | **Producer + Consumer thật đang chạy**: dual-publish (SB cho saga, Kafka cho stream), `KafkaConsumerBase` — consumer group, 3 partitions, manual offset commit; audit trail dựng từ stream |
-| Microservices architecture | ✅ | 2 service tách, **DB-per-service** (SQL Server + Postgres) |
+| Microservices architecture | ✅ | **3 service** tách, **DB-per-service** (SQL Server + 2× Postgres) |
 | Event-driven architecture | ✅ | integration events qua broker + Outbox |
 | RESTful API + **gRPC** | ✅ P2 | Minimal API + gRPC AccountCheck (Payments→Accounts sync) |
 | Clean Architecture + DDD | ✅ P2 | Domain/Application/Infra/Api, aggregate |
@@ -45,7 +45,7 @@ D-Pro (composable monolith, Kafka) không thể hiện: **Azure messaging + micr
 | Docker | ✅ | Dockerfile + compose |
 | CI/CD, Kubernetes, App Insights | ✅ | CI + **11 k8s manifest** (3 Deployment/Service + **HPA** + ConfigMap/Secret), validate offline OK + App Insights |
 | Migrate monolith→microservices | ✅ | `docs/MONOLITH-TO-MICROSERVICES.md` — strangler fig, khi nào tách, cái giá phải trả, bài học thật |
-| Unit tests | ✅ P3 | xUnit 12 tests (Account overdraft, Transfer rules) |
+| Tests | ✅ | **64 unit** (domain, auth, throttle, versioning) + **8 integration** (Testcontainers: Postgres + SQL Server thật) |
 | Frontend (bonus — JD không yêu cầu) | ✅ | React+Vite+TS `frontend/` — Login (JWT), Dashboard (tài khoản của mình + **sao kê bút toán kép**), Chuyển tiền (event-driven async) |
 | Docs | ✅ | ARCHITECTURE.md (Mermaid), k8s README, frontend README, CLAUDE.md + .cursorrules |
 | **Nghiệp vụ banking** | ✅ | Ownership (JWT sub) · currency validation · **double-entry ledger** + sao kê |
@@ -105,12 +105,13 @@ POST /api/transfers → Payments (PostgreSQL/Dapper) → [Outbox] → IEventBus
 banking-domain/
 ├── BankingDomain.sln
 ├── src/
-│   ├── BuildingBlocks/           ← IEventBus, IntegrationEvent, broker impls, contracts (dùng chung)
+│   ├── BuildingBlocks.Contracts/  ← CHỈ integration event — ZERO dependency
+│   ├── BuildingBlocks/           ← infra dùng chung: Messaging · Auth · State · Observability · Http
 │   ├── Accounts/
 │   │   ├── Accounts.Domain/       ← Account aggregate, VO, domain events, exceptions (KHÔNG phụ thuộc gì)
 │   │   ├── Accounts.Application/  ← commands/queries + handlers + repo interfaces
 │   │   ├── Accounts.Infrastructure/ ← EF Core (SQL Server), Outbox, consumers
-│   │   └── Accounts.Api/          ← Minimal API endpoints
+│   │   └── Accounts.Api/          ← Program (wiring) + Endpoints/*Endpoints.cs
 │   ├── Insurance/                 ← Policy + Claim (PostgreSQL + EF Core)
 │   │   ├── Insurance.Domain/       ← Policy, Claim aggregate + rules bảo hiểm
 │   │   ├── Insurance.Application/
@@ -121,13 +122,18 @@ banking-domain/
 │       ├── Payments.Application/
 │       ├── Payments.Infrastructure/ ← Dapper (PostgreSQL), Outbox, publisher
 │       └── Payments.Api/
-├── deploy/                        ← servicebus-emulator-config.json, k8s manifests
+├── tests/
+│   ├── BankingDomain.UnitTests/        ← 64 test — domain thuần, in-memory
+│   └── BankingDomain.IntegrationTests/ ← 8 test — Testcontainers (DB thật), tự skip nếu thiếu Docker
+├── frontend/                      ← React + Vite + TS
+├── protos/                        ← accountcheck.proto (gRPC)
+├── deploy/                        ← servicebus-emulator-config.json · k8s/ · ci/
+├── docs/                          ← ARCHITECTURE.md · MONOLITH-TO-MICROSERVICES.md
 ├── docker-compose.yml
 └── README.md
 ```
 
-> Phase 1 (hiện tại) gộp Domain/Application/Infra trong `*.Api` để walking skeleton chạy trước.
-> Phase 2 tách đủ 4 layer Clean Architecture như trên.
+> Cả 3 service đều đã tách đủ 4 layer Clean Architecture; endpoint nằm ở `Api/Endpoints/`.
 
 ---
 
