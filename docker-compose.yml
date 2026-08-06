@@ -80,6 +80,21 @@ services:
       timeout: 3s
       retries: 12
 
+  # Giao diện xem Kafka: topic, partition, nội dung message, consumer lag.
+  # Chỉ phục vụ phát triển và demo — không có trong manifest Kubernetes.
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: banking
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
+      AUTH_TYPE: DISABLED
+    ports:
+      - "8085:8080"   # 8090 đã dành cho gRPC của Accounts
+
   servicebus-emulator:
     image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
     depends_on:

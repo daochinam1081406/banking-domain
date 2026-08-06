@@ -31,6 +31,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         ValidAudience = jwt.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret)),
     });
+builder.Services.AddApiDocumentation("Accounts API", "Tài khoản, số dư, sổ cái bút toán kép và audit trail.");
 builder.Services.AddAuthorization();
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
     p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
@@ -54,6 +55,8 @@ using (var scope = app.Services.CreateScope())
     }
     AccountSeeder.Seed(db);
 }
+
+app.UseApiDocumentation();
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -27,6 +27,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         ValidAudience = jwt.Audience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret)),
     });
+builder.Services.AddApiDocumentation("Payments API", "Xác thực, lệnh chuyển tiền, Outbox và saga chi trả bồi thường.");
 builder.Services.AddAuthorization();
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
     p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
@@ -52,6 +53,8 @@ using (var scope = app.Services.CreateScope())
         User.Create("adjuster", "Adjuster@123", Roles.Adjuster, "Giám định viên Bảo Việt"),
     ]);
 }
+
+app.UseApiDocumentation();
 
 app.UseAuthentication();
 app.UseAuthorization();

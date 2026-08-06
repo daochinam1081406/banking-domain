@@ -29,6 +29,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // Tách quyền: chỉ giám định viên mới được duyệt/từ chối hồ sơ (segregation of duties).
+builder.Services.AddApiDocumentation("Insurance API",
+    "Hợp đồng bảo hiểm, hồ sơ bồi thường và quy trình giám định.");
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("adjuster-only", p => p.RequireRole(Roles.Adjuster));
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
@@ -43,6 +45,8 @@ app.UseCors();
 app.UseDomainExceptionHandler();
 
 await app.Services.MigrateInsuranceDatabaseAsync();
+
+app.UseApiDocumentation();
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -145,10 +145,15 @@ hồ sơ bồi thường. Đăng nhập bằng `adjuster` sẽ thấy hàng đ�
 
 | Service | REST | Ghi chú |
 |---|---|---|
-| Payments | `8081` | Xác thực, chuyển tiền |
-| Accounts | `8082` | Số dư, sổ cái · gRPC `8090` (h2c, nội bộ) |
-| Insurance | `8083` | Hợp đồng, bồi thường |
+| Payments | `8081` | Xác thực, chuyển tiền · Swagger tại `/swagger` |
+| Accounts | `8082` | Số dư, sổ cái · gRPC `8090` (h2c, nội bộ) · Swagger tại `/swagger` |
+| Insurance | `8083` | Hợp đồng, bồi thường · Swagger tại `/swagger` |
+| Kafka UI | `8085` | Xem topic, partition, consumer lag (chỉ môi trường dev) |
 | Frontend | `5174` | Vite dev server |
+
+Mở <http://localhost:8081/swagger> để thử API ngay trên trình duyệt: gọi `/auth/login` lấy
+`accessToken`, bấm **Authorize** dán token vào, rồi gọi được mọi endpoint có bảo vệ.
+Đặt `Swagger__Enabled=false` để tắt.
 
 Hạ tầng dùng cổng lệch mặc định để tránh đụng dịch vụ sẵn có trên máy:
 postgres `5433` · redis `6380` · kafka `9094` · mssql `1433` · Service Bus emulator `5672`.
