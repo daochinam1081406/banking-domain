@@ -28,7 +28,9 @@ public static class DependencyInjection
         services.AddRedisState(config);   // distributed lock chống duyệt trùng
         services.AddHostedService<ClaimPayoutResultConsumer>();
 
-        services.AddHealthChecks().AddDbContextCheck<InsuranceDbContext>("postgres");
+        // Nhãn "ready": trượt thì rút khỏi bộ chia tải, không bị giết. Xem Accounts để biết lý do.
+        services.AddHealthChecks()
+            .AddDbContextCheck<InsuranceDbContext>("postgres", tags: ["ready"]);
         return services;
     }
 }

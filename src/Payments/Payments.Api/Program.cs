@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Text;
 using BuildingBlocks.Auth;
 using BuildingBlocks.Http;
@@ -56,6 +57,15 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/", () => "Payments.Api — /auth · /api/transfers");
+// Liveness: chỉ chứng minh tiến trình còn phản hồi, KHÔNG chạy check phụ thuộc nào.
+// Trượt cái này mới đáng bị Kubernetes giết và tạo lại.
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+
+// Readiness: có kết nối được database/Redis không. Trượt thì bị rút khỏi bộ chia tải
+// nhưng pod vẫn sống, tự quay lại khi phụ thuộc hồi phục.
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = c => c.Tags.Contains("ready") });
+
+// Giữ lại cho docker compose và kiểm tra thủ công — chạy toàn bộ check.
 app.MapHealthChecks("/health");
 app.MapAuthEndpoints();
 app.MapTransferEndpoints();

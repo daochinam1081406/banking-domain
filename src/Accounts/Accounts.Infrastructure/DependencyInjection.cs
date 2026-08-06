@@ -50,9 +50,13 @@ public static class DependencyInjection
             services.AddHostedService<AuditStreamConsumer>();
 
         // Health check thật — probe DB (và Redis nếu bật), không phải trả "healthy" cứng.
-        var health = services.AddHealthChecks().AddDbContextCheck<AccountsDbContext>("sqlserver");
+        // Nhãn "ready" tách check phụ thuộc khỏi liveness: mất database thì ngừng nhận request,
+        // KHÔNG để Kubernetes giết pod — giết rồi khởi động lại cũng không kết nối được, chỉ thành
+        // vòng lặp restart biến sự cố database tạm thời thành sập toàn hệ thống.
+        var health = services.AddHealthChecks()
+            .AddDbContextCheck<AccountsDbContext>("sqlserver", tags: ["ready"]);
         if (!string.IsNullOrWhiteSpace(redisConn))
-            health.AddCheck("redis", new RedisHealthCheck(redisConn));
+            health.AddCheck("redis", new RedisHealthCheck(redisConn), failureStatus: null, tags: ["ready"]);
 
         return services;
     }

@@ -43,7 +43,9 @@ public static class DependencyInjection
         services.AddHostedService<ClaimPayoutConsumer>();       // saga: chi trả bồi thường từ Insurance
 
         // Health check thật — probe Postgres qua DI (không BuildServiceProvider giữa chừng).
-        services.AddHealthChecks().AddCheck<PostgresHealthCheck>("postgres");
+        // Nhãn "ready": trượt thì rút khỏi bộ chia tải, không bị giết. Xem Accounts để biết lý do.
+        services.AddHealthChecks()
+            .AddCheck<PostgresHealthCheck>("postgres", failureStatus: null, tags: ["ready"]);
 
         return services;
     }

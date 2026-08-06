@@ -20,14 +20,26 @@ spec:
           envFrom:
             - configMapRef: { name: banking-config }
             - secretRef: { name: banking-secrets }
+          # readiness: kiểm tra phụ thuộc (DB/Redis). Trượt thì rút khỏi Service,
+          # pod vẫn sống và tự quay lại khi phụ thuộc hồi phục.
           readinessProbe:
-            httpGet: { path: /health, port: 8080 }
+            httpGet: { path: /health/ready, port: 8080 }
             initialDelaySeconds: 10
             periodSeconds: 10
+            failureThreshold: 3
+          # liveness: chỉ hỏi tiến trình còn phản hồi không — KHÔNG chạm database.
+          # Nếu trỏ vào endpoint có kiểm tra DB, một sự cố DB tạm thời sẽ khiến K8s giết sạch pod
+          # rồi lặp vô tận, biến sự cố nhỏ thành sập toàn hệ thống.
           livenessProbe:
-            httpGet: { path: /health, port: 8080 }
+            httpGet: { path: /health/live, port: 8080 }
             initialDelaySeconds: 20
             periodSeconds: 15
+            failureThreshold: 3
+          # startup: cho phép khởi động chậm (chạy migration) mà không bị liveness giết oan.
+          startupProbe:
+            httpGet: { path: /health/live, port: 8080 }
+            periodSeconds: 5
+            failureThreshold: 30
           resources:
             requests: { cpu: "100m", memory: "192Mi" }
             limits:   { cpu: "500m", memory: "512Mi" }

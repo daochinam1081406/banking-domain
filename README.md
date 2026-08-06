@@ -82,6 +82,7 @@ và **chi trả bồi thường** từ quỹ bảo hiểm về tài khoản khá
 | **Saga** | Mọi lệnh đều có trạng thái cuối. Lỗi nghiệp vụ phát event bù trừ; lỗi hạ tầng trả message cho broker giao lại. |
 | **Optimistic concurrency** | `rowversion` trên SQL Server, system column `xmin` trên PostgreSQL. |
 | **Correlation ID** | Một mã đi xuyên HTTP → gRPC → outbox → message → consumer, để lần ra được một giao dịch. |
+| **Liveness tách readiness** | `/health/live` chỉ hỏi tiến trình còn phản hồi; `/health/ready` mới kiểm tra database và Redis. Gộp chung thì một sự cố database tạm thời sẽ khiến Kubernetes giết sạch pod rồi lặp vô tận. |
 | **Event versioning** | Mỗi message mang `SchemaVersion`; consumer gặp version lạ thì dead-letter kèm lý do, không đoán mò trên dữ liệu tiền tệ. |
 
 ## Bảo mật
