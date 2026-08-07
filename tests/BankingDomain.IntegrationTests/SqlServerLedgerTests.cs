@@ -15,15 +15,19 @@ namespace BankingDomain.IntegrationTests;
 /// </summary>
 public sealed class SqlServerLedgerTests : IAsyncLifetime
 {
-    private readonly MsSqlContainer _sql = new MsSqlBuilder().Build();
+    // Dựng container BÊN TRONG InitializeAsync, không phải ở field initializer: Build() ném lỗi
+    // ngay khi không có Docker, mà field initializer chạy trước cả Skip.IfNot nên guard vô hiệu —
+    // test sẽ fail đỏ vì thiếu hạ tầng thay vì được bỏ qua.
+    private MsSqlContainer? _sql;
     private DbContextOptions<AccountsDbContext> _options = null!;
 
     public async Task InitializeAsync()
     {
         if (!DockerAvailability.IsAvailable) return;   // để Skip xử lý ở từng test
+        _sql = new MsSqlBuilder().Build();
         await _sql.StartAsync();
         _options = new DbContextOptionsBuilder<AccountsDbContext>()
-            .UseSqlServer(_sql.GetConnectionString()).Options;
+            .UseSqlServer(_sql!.GetConnectionString()).Options;
 
         await using var db = new AccountsDbContext(_options);
         await db.Database.MigrateAsync();
@@ -31,7 +35,7 @@ public sealed class SqlServerLedgerTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        if (DockerAvailability.IsAvailable) await _sql.DisposeAsync();
+        if (_sql is not null) await _sql.DisposeAsync();
     }
 
     private AccountsDbContext NewDb() => new(_options);

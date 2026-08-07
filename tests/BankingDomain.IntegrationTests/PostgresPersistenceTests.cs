@@ -18,25 +18,27 @@ namespace BankingDomain.IntegrationTests;
 /// </summary>
 public sealed class PostgresPersistenceTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _pg = new PostgreSqlBuilder()
-        .WithImage("postgres:17-alpine")
-        .WithDatabase("payments")
-        .Build();
-
+    // Xem chú thích ở SqlServerLedgerTests: Build() phải nằm trong InitializeAsync,
+    // nếu đặt ở field initializer thì nó chạy trước guard và test fail thay vì skip.
+    private PostgreSqlContainer? _pg;
     private NpgsqlDataSource _dataSource = null!;
 
     public async Task InitializeAsync()
     {
         if (!DockerAvailability.IsAvailable) return;   // để Skip xử lý ở từng test
+        _pg = new PostgreSqlBuilder()
+            .WithImage("postgres:17-alpine")
+            .WithDatabase("payments")
+            .Build();
         await _pg.StartAsync();
         PersistenceConventions.Apply();
-        _dataSource = NpgsqlDataSource.Create(_pg.GetConnectionString());
+        _dataSource = NpgsqlDataSource.Create(_pg!.GetConnectionString());
         await SchemaInitializer.EnsureCreatedAsync(_dataSource);
     }
 
     public async Task DisposeAsync()
     {
-        if (!DockerAvailability.IsAvailable) return;
+        if (_pg is null) return;
         await _dataSource.DisposeAsync();
         await _pg.DisposeAsync();
     }
